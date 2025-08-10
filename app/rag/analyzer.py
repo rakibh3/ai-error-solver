@@ -4,7 +4,9 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 import google.generativeai as genai
 from app.core import config
 
-def analyze_code(student_code: str, instructor_project_name: str, instructor_branch_name: str):
+from typing import Optional
+
+def analyze_code(student_code: str, instructor_project_name: str, instructor_branch_name: str, error_message: Optional[str] = None):
     # Load the vector store for the instructor's project
     vector_store_path = os.path.join("vectorstore", "chroma_db", instructor_project_name, instructor_branch_name)
     if not os.path.isdir(vector_store_path):
@@ -25,6 +27,15 @@ def analyze_code(student_code: str, instructor_project_name: str, instructor_bra
     ---
     {student_code}
     ---
+    """
+    if error_message:
+        prompt += f"""
+    The student is encountering the following error message:
+    ---
+    {error_message}
+    ---
+    """
+    prompt += f"""
     Here is some relevant code from the instructor's solution:
     ---
     {[doc.page_content for doc in relevant_docs]}

@@ -29,9 +29,17 @@ def list_project_branches(project_name: str):
 def list_student_projects(project_name: str):
     return project_service.list_student_projects(project_name)
 
-@router.get("/compare/{student_project_name}")
-def compare_project(student_project_name: str, instructor_project: str, instructor_branch: str):
-    result = analysis_service.compare_student_project(student_project_name, instructor_project, instructor_branch)
+from app.api.v1.schemas import CompareRequest
+
+@router.post("/compare")
+def compare_project(request: CompareRequest):
+    result = analysis_service.compare_student_project(
+        request.student_project_name,
+        request.student_project_id,
+        request.instructor_project,
+        request.instructor_branch,
+        request.error_message
+    )
     if "error" in result:
         raise HTTPException(status_code=404, detail=result["error"])
     return result

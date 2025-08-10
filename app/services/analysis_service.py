@@ -1,8 +1,10 @@
 import os
 from app.rag import analyzer
 
-def compare_student_project(student_project_name: str, instructor_project: str, instructor_branch: str):
-    student_project_dir = os.path.join("student_projects", instructor_project, student_project_name)
+from typing import Optional
+
+def compare_student_project(student_project_name: str, student_project_id: str, instructor_project: str, instructor_branch: str, error_message: Optional[str] = None):
+    student_project_dir = os.path.join("student_projects", student_project_name, student_project_id)
     if not os.path.isdir(student_project_dir):
         return {"error": "Student project not found"}
 
@@ -15,7 +17,7 @@ def compare_student_project(student_project_name: str, instructor_project: str, 
                 with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                     student_code = f.read()
                 
-                analysis = analyzer.analyze_code(student_code, instructor_project, instructor_branch)
+                analysis = analyzer.analyze_code(student_code, instructor_project, instructor_branch, error_message)
                 results[file] = analysis
 
     return {"status": "success", "results": results}
