@@ -1,0 +1,27 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+venv
+
+# Environments 
+.env
+
+# md files
+GEMINI.md
+AGENT.md
+CLAUDE.md
+
+# Project files
+student_projects
+instructor_projects
+vectorstore
+
+# Text files
+commit_message.txt
