@@ -59,3 +59,18 @@ def list_student_projects(project_name: str):
     if not os.path.isdir(student_projects_dir):
         return []
     return [d for d in os.listdir(student_projects_dir) if os.path.isdir(os.path.join(student_projects_dir, d))]
+
+def list_all_student_projects():
+    all_student_data = []
+    base_student_projects_dir = "student_projects"
+    if not os.path.isdir(base_student_projects_dir):
+        return []
+
+    for project_name in os.listdir(base_student_projects_dir):
+        project_path = os.path.join(base_student_projects_dir, project_name)
+        if os.path.isdir(project_path):
+            for student_id in os.listdir(project_path):
+                student_id_path = os.path.join(project_path, student_id)
+                if os.path.isdir(student_id_path):
+                    all_student_data.append({"project_name": project_name, "student_project_id": student_id})
+    return all_student_data

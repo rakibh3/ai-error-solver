@@ -25,9 +25,9 @@ def list_instructor_projects():
 def list_project_branches(project_name: str):
     return project_service.list_project_branches(project_name)
 
-@router.get("/student-projects/{project_name}")
-def list_student_projects(project_name: str):
-    return project_service.list_student_projects(project_name)
+@router.get("/student-projects")
+def list_all_student_projects():
+    return project_service.list_all_student_projects()
 
 from app.api.v1.schemas import CompareRequest
 
