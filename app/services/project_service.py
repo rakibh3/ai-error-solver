@@ -40,8 +40,6 @@ def save_student_project(project_name: str, file: UploadFile):
         shutil.rmtree(student_project_dir)
         return {"error": f"An unexpected error occurred: {str(e)}"}
 
-
-
 def list_instructor_projects():
     instructor_projects_dir = "instructor_projects"
     if not os.path.isdir(instructor_projects_dir):
@@ -53,12 +51,6 @@ def list_project_branches(project_name: str):
     if not os.path.isdir(project_dir):
         return {"error": "Project not found"}
     return [d for d in os.listdir(project_dir) if os.path.isdir(os.path.join(project_dir, d))]
-
-def list_student_projects(project_name: str):
-    student_projects_dir = os.path.join("student_projects", project_name)
-    if not os.path.isdir(student_projects_dir):
-        return []
-    return [d for d in os.listdir(student_projects_dir) if os.path.isdir(os.path.join(student_projects_dir, d))]
 
 def list_all_student_projects():
     all_student_data = []
