@@ -24,7 +24,7 @@ def index_instructor_project(project_name: str, branch_name: str):
     for root, _, files in os.walk(project_path):
         for file in files:
             # Simple check to avoid non-code files, can be improved
-            if file.endswith(('.py', '.js', '.ts', '.tsx', '.html', '.css', '.md', 'json')):
+            if file.endswith(('.py', '.js', 'jsx' ,'.ts', '.tsx', '.html', '.css', '.md', 'json')):
                 filepaths.append(os.path.join(root, file))
 
     if not filepaths:
