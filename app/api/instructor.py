@@ -5,9 +5,9 @@ from app.services import project_service
 
 router = APIRouter()
 
-@router.post("/index-instructor-project/{project_name}/{branch_name}")
-def index_project(project_name: str, branch_name: str):
-    result = indexing_service.index_instructor_project(project_name, branch_name)
+@router.post("/index-instructor-project/{project_name}")
+def index_project(project_name: str):
+    result = indexing_service.index_project_branches(project_name)
     if "error" in result:
         raise HTTPException(status_code=404, detail=result["error"])
     return result

@@ -1,10 +1,9 @@
 import os
 from langchain_community.vectorstores import Chroma
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
-import google.generativeai as genai
-from app.core import config
-
+from langchain_voyageai import VoyageAIEmbeddings
 from typing import Optional
+from app.core import config
+import google.generativeai as genai
 
 def analyze_code(student_code: str, instructor_project_name: str, instructor_branch_name: str, error_message: Optional[str] = None):
     # Load the vector store for the instructor's project
@@ -12,7 +11,12 @@ def analyze_code(student_code: str, instructor_project_name: str, instructor_bra
     if not os.path.isdir(vector_store_path):
         return {"error": "Instructor project embedding not found"}
 
-    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=config.GEMINI_API_KEY)
+    # Initialize Voyage AI embeddings
+    embeddings = VoyageAIEmbeddings(
+        model="voyage-code-3",
+        voyage_api_key=config.VOYAGE_API_KEY
+    )
+    
     db = Chroma(persist_directory=vector_store_path, embedding_function=embeddings)
 
     # Retrieve relevant context from the vector store

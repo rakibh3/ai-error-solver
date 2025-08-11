@@ -2,13 +2,12 @@ import os
 import shutil
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import Chroma
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_voyageai import VoyageAIEmbeddings
 from app.core import config
 
 def index_instructor_project(project_name: str, branch_name: str):
     # Construct the path to the instructor's project directory
     project_path = os.path.join("instructor_projects", project_name, branch_name)
-    print(project_path)
 
     if not os.path.isdir(project_path):
         return {"error": "Instructor project not found"}
@@ -41,11 +40,38 @@ def index_instructor_project(project_name: str, branch_name: str):
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
     texts = text_splitter.create_documents(documents)
 
-    # Embed the chunks using Google's text embedding model
-    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=config.GEMINI_API_KEY)
+    # Embed the chunks using Voyage AI's text embedding model
+    embeddings = VoyageAIEmbeddings(
+        model="voyage-code-3",
+        voyage_api_key=config.VOYAGE_API_KEY
+    )
     
     # Store the embeddings in ChromaDB
     db = Chroma.from_documents(texts, embeddings, persist_directory=vector_store_path)
     db.persist()
 
     return {"status": "success", "message": f"Project {project_name}/{branch_name} indexed successfully."}
+
+def index_project_branches(project_name: str):
+    project_dir = os.path.join("instructor_projects", project_name)
+    if not os.path.isdir(project_dir):
+        return {"error": "Project not found"}
+
+    branches = [d for d in os.listdir(project_dir) if os.path.isdir(os.path.join(project_dir, d))]
+    if not branches:
+        return {"error": "No branches found for the project"}
+
+    indexed_branches = []
+    errors = []
+
+    for branch_name in branches:
+        result = index_instructor_project(project_name, branch_name)
+        if "error" in result:
+            errors.append(f"Branch {branch_name}: {result['error']}")
+        else:
+            indexed_branches.append(branch_name)
+
+    if errors:
+        return {"status": "partial_success", "indexed_branches": indexed_branches, "errors": errors}
+
+    return {"status": "success", "message": f"All branches of project {project_name} indexed successfully."}
