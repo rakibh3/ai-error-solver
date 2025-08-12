@@ -4,9 +4,9 @@ import hashlib
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_qdrant import QdrantVectorStore
 from langchain_voyageai import VoyageAIEmbeddings
-from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams, PointStruct
+from qdrant_client.models import Distance
 from app.core import config
+from app.utils.qdrant import get_qdrant_client, get_collection_name
 
 # Directories and files to ignore during indexing
 IGNORE_DIRS = {
@@ -27,44 +27,30 @@ IGNORE_FILES = {
 }
 
 def _should_ignore_path(path: str, base_path: str) -> bool:
-    """Check if a path should be ignored during indexing"""
-    relative_path = os.path.relpath(path, base_path)
-    path_parts = relative_path.split(os.sep)
+    """
+    Check if a path should be ignored during indexing
+    """
+    # Get relative path from base
+    rel_path = os.path.relpath(path, base_path)
     
-    # Check if any part of the path is in ignore directories
+    # Check if any part of the path contains ignored directories
+    path_parts = rel_path.split(os.sep)
+    
     for part in path_parts:
         if part in IGNORE_DIRS:
             return True
     
-    # Check if the file is in ignore files
-    filename = os.path.basename(path)
-    if filename in IGNORE_FILES:
-        return True
-    
-    # Check for hidden files/directories (starting with .)
-    for part in path_parts:
-        if part.startswith('.') and part not in {'.', '..'}:
-            # Allow specific dotfiles that might contain useful code
-            allowed_dotfiles = {'.env.example', '.gitignore', '.dockerignore'}
-            if part not in allowed_dotfiles:
-                return True
+    # Check if it's an ignored file
+    if os.path.isfile(path):
+        filename = os.path.basename(path)
+        if filename in IGNORE_FILES:
+            return True
+        
+        # Check file extensions
+        if filename.startswith('.') and filename not in {'.env.example'}:
+            return True
     
     return False
-
-def _get_collection_name(project_name: str, branch_name: str) -> str:
-    """Generate a valid collection name for Qdrant"""
-    # Replace invalid characters and ensure it starts with a letter
-    safe_name = f"instructor_project_{project_name}_{branch_name}"
-    safe_name = "".join(c if c.isalnum() or c == '_' else '_' for c in safe_name)
-    return safe_name.lower()
-
-def _get_qdrant_client() -> QdrantClient:
-    """Initialize Qdrant client"""
-    return QdrantClient(
-        host=config.QDRANT_HOST,
-        port=config.QDRANT_PORT,
-        api_key=config.QDRANT_API_KEY
-    )
 
 def index_instructor_project(project_name: str, branch_name: str):
     # Construct the path to the instructor's project directory
@@ -74,8 +60,8 @@ def index_instructor_project(project_name: str, branch_name: str):
         return {"error": "Instructor project not found"}
 
     # Initialize Qdrant client
-    client = _get_qdrant_client()
-    collection_name = _get_collection_name(project_name, branch_name)
+    client = get_qdrant_client()
+    collection_name = get_collection_name(project_name, branch_name)
     
     # Clean up old collection if it exists
     try:
@@ -187,39 +173,36 @@ def index_instructor_project(project_name: str, branch_name: str):
 
 def index_project_branches(project_name: str):
     project_dir = os.path.join("instructor_projects", project_name)
+    
     if not os.path.isdir(project_dir):
-        return {"error": "Project not found"}
-
-    branches = [d for d in os.listdir(project_dir) if os.path.isdir(os.path.join(project_dir, d))]
+        return {"error": f"Project directory not found: {project_name}"}
+    
+    branches = []
+    for item in os.listdir(project_dir):
+        item_path = os.path.join(project_dir, item)
+        if os.path.isdir(item_path):
+            branches.append(item)
+    
     if not branches:
-        return {"error": "No branches found for the project"}
-
-    indexed_branches = []
-    errors = []
-    total_files_indexed = 0
-    total_files_ignored = 0
-
-    for branch_name in branches:
-        result = index_instructor_project(project_name, branch_name)
-        if "error" in result:
-            errors.append(f"Branch {branch_name}: {result['error']}")
-        else:
-            indexed_branches.append(branch_name)
-            total_files_indexed += result.get('files_indexed', 0)
-            total_files_ignored += result.get('files_ignored', 0)
-
-    if errors:
-        return {
-            "status": "partial_success", 
-            "indexed_branches": indexed_branches, 
-            "errors": errors,
-            "total_files_indexed": total_files_indexed,
-            "total_files_ignored": total_files_ignored
-        }
-
+        return {"error": f"No branches found for project: {project_name}"}
+    
+    results = []
+    for branch in branches:
+        result = index_instructor_project(project_name, branch)
+        results.append({
+            "branch": branch,
+            "result": result
+        })
+    
+    # Summary
+    successful = sum(1 for r in results if r["result"].get("status") == "success")
+    failed = len(results) - successful
+    
     return {
-        "status": "success", 
-        "message": f"All branches of project {project_name} indexed successfully.",
-        "total_files_indexed": total_files_indexed,
-        "total_files_ignored": total_files_ignored
+        "status": "success" if failed == 0 else "partial",
+        "project_name": project_name,
+        "total_branches": len(branches),
+        "successful_indexes": successful,
+        "failed_indexes": failed,
+        "results": results
     }
