@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Dict, Any
 from datetime import datetime
 
 class CompareRequest(BaseModel):
@@ -35,6 +35,21 @@ class DeleteProjectResponse(BaseModel):
     project_name: Optional[str] = None
     branch_name: Optional[str] = None
     vectors_deleted: Optional[Union[int, str]] = None
+    deleted_at: Optional[str] = None
+
+class VectorCleanupResult(BaseModel):
+    """Model for individual vector cleanup result"""
+    branch: str
+    status: str
+    message: str
+
+class InstructorProjectDeleteResponse(BaseModel):
+    """Response model for deleting an instructor project"""
+    status: str
+    message: str
+    project_name: Optional[str] = None
+    branches_deleted: Optional[List[str]] = None
+    vector_cleanup_results: Optional[List[VectorCleanupResult]] = None
     deleted_at: Optional[str] = None
 
 class ErrorResponse(BaseModel):

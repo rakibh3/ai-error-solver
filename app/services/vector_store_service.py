@@ -90,16 +90,7 @@ def get_all_indexed_projects() -> Dict[str, Any]:
 
 
 def delete_indexed_project(project_name: str, branch_name: str) -> Dict[str, Any]:
-    """
-    Delete a specific indexed project from the vector database
     
-    Args:
-        project_name: Name of the project to delete
-        branch_name: Branch name of the project to delete
-        
-    Returns:
-        Dict with operation status and details
-    """
     try:
         client = get_qdrant_client()
         collection_name = get_collection_name(project_name, branch_name)
