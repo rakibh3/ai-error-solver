@@ -17,7 +17,7 @@ def list_project_branches(project_name: str):
 @router.delete(
     "/instructor-project/{instructor_project_name}",
     response_model=Union[InstructorProjectDeleteResponse, ErrorResponse],
-    summary="Delete an instructor project",
+    summary="Delete an instructor project with all branches and associated vector collections",
     description="Delete an entire instructor project including all branches and associated vector collections",
     responses={
         200: {
