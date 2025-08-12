@@ -1,6 +1,5 @@
 from fastapi import APIRouter, HTTPException, Path, Query
 from typing import Union
-from app.services import instructor_service
 from app.services import indexing_service
 from app.services import analysis_service
 from app.services import vector_store_service
@@ -20,14 +19,6 @@ def index_project(project_name: str):
         raise HTTPException(status_code=404, detail=result["error"])
     return result
 
-@router.get("/instructor-projects")
-def list_instructor_projects():
-    return instructor_service.list_instructor_projects()
-
-@router.get("/instructor-projects/{project_name}/branches")
-def list_project_branches(project_name: str):
-    return instructor_service.list_project_branches(project_name)
-
 @router.get(
     "/indexed-projects",
     response_model=Union[IndexedProjectsResponse, ErrorResponse],
@@ -45,12 +36,6 @@ def list_project_branches(project_name: str):
     }
 )
 def get_all_indexed_projects():
-    """
-    Get all indexed projects from the vector database.
-    
-    Returns:
-        IndexedProjectsResponse: List of all indexed projects with their metadata
-    """
     result = vector_store_service.get_all_indexed_projects()
     
     if result["status"] == "error":
@@ -82,16 +67,6 @@ def delete_indexed_project(
     project_name: str = Path(..., description="Name of the project to delete"),
     branch_name: str = Path(..., description="Branch name of the project to delete")
 ):
-    """
-    Delete a specific indexed project from the vector database.
-    
-    Args:
-        project_name: Name of the project to delete
-        branch_name: Branch name of the project to delete
-        
-    Returns:
-        DeleteProjectResponse: Details about the deletion operation
-    """
     result = vector_store_service.delete_indexed_project(project_name, branch_name)
     
     if result["status"] == "error":
