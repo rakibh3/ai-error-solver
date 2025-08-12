@@ -63,19 +63,31 @@ def compare_student_project(student_project_name: str, student_project_id: str, 
     if not os.path.isdir(student_project_dir):
         return {"error": "Student project not found"}
 
-    results = {}
+    # If there's no error message, we can't proceed with error-driven analysis.
+    if not error_message:
+        return {"error": "An error message is required for analysis."}
+
+    all_student_code = []
     for root, _, files in os.walk(student_project_dir):
         for file in files:
-            # Simple check to avoid non-code files
-            if file.endswith(('.py', '.js', 'jsx', '.ts', '.tsx', '.html', '.css', '.md', '.json')):
+            if file.endswith(('.py', '.js', '.ts', '.tsx', '.html', '.css', '.md', '.json')):
                 file_path = os.path.join(root, file)
+                relative_path = os.path.relpath(file_path, student_project_dir)
                 with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                    student_code = f.read()
-                
-                analysis = analyzer.analyze_code(student_code, instructor_project, instructor_branch, error_message)
-                results[file] = analysis
+                    code = f.read()
+                    all_student_code.append(f"--- File: {relative_path} ---\n{code}")
 
-    return {"status": "success", "results": results}
+    student_code_context = "\n\n".join(all_student_code)
+
+    # Perform a single, error-driven analysis with the full project context
+    analysis = analyzer.analyze_code(
+        student_code_context=student_code_context,
+        instructor_project_name=instructor_project,
+        instructor_branch_name=instructor_branch,
+        error_message=error_message
+    )
+
+    return {"status": "success", "results": analysis}
 
 
 def list_instructor_projects():
