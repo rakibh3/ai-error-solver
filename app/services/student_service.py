@@ -55,3 +55,30 @@ def list_all_student_projects():
                 if os.path.isdir(student_id_path):
                     all_student_data.append({"project_name": project_name, "student_project_id": student_id})
     return all_student_data
+
+def delete_student_project(student_project_id: str):
+
+    base_student_projects_dir = "student_projects"
+    
+    # Search for the project containing the student_project_id
+    if not os.path.isdir(base_student_projects_dir):
+        return {"status": "error", "message": "Student projects directory does not exist"}
+    
+    for project_name in os.listdir(base_student_projects_dir):
+        project_path = os.path.join(base_student_projects_dir, project_name)
+        if os.path.isdir(project_path):
+            student_path = os.path.join(project_path, student_project_id)
+            if os.path.isdir(student_path):
+                try:
+                    # Delete the student project directory
+                    shutil.rmtree(student_path)
+                    
+                    # Check if the project directory is now empty and remove it if it is
+                    if not os.listdir(project_path):
+                        os.rmdir(project_path)
+                        
+                    return {"status": "success", "message": f"Student project {student_project_id} deleted successfully"}
+                except Exception as e:
+                    return {"status": "error", "message": f"Failed to delete student project: {str(e)}"}
+    
+    return {"status": "error", "message": f"Student project with ID {student_project_id} not found"}
