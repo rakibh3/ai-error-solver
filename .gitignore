@@ -25,3 +25,7 @@ vectorstore
 
 # Text files
 commit_message.txt
+
+# Rules files
+.cursor
+.windsurf

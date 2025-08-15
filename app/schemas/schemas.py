@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, HttpUrl
 from typing import Optional, List, Union, Dict, Any
 from datetime import datetime
 
@@ -56,3 +56,11 @@ class ErrorResponse(BaseModel):
     """Standard error response model"""
     status: str = "error"
     message: str
+
+class RepoRequest(BaseModel):
+    repo_url: HttpUrl
+
+class RepoResponse(BaseModel):
+    status: str
+    parent_folder: str
+    cloned_branches: list[str]

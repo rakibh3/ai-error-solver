@@ -1,9 +1,27 @@
 from fastapi import APIRouter, HTTPException, Path
 from typing import Union
 from app.services import instructor_service
-from app.schemas.schemas import InstructorProjectDeleteResponse, ErrorResponse
+from app.schemas.schemas import InstructorProjectDeleteResponse, ErrorResponse, RepoRequest, RepoResponse
 
 router = APIRouter()
+
+@router.post("/instructor-project/index",
+    response_model=Union[RepoResponse, ErrorResponse],
+    summary="Index an instructor project and all its branches",
+    description="Index an instructor project and all its branches",
+    responses={
+        200: {
+            "description": "Successfully indexed instructor project",
+            "model": RepoResponse
+        },
+        500: {
+            "description": "Internal server error",
+            "model": ErrorResponse
+        }
+    }
+)
+def index_instructor_project(request: RepoRequest):
+    return instructor_service.index_instructor_project(request.repo_url)
 
 
 @router.get("/instructor-projects")

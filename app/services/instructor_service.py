@@ -1,8 +1,12 @@
 import os
 import shutil
+import subprocess
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, Any, List
+from fastapi import HTTPException
 from app.services import vector_store_service
+from app.services import indexing_service
 
 def list_instructor_projects():
     instructor_projects_dir = "instructor_projects"
@@ -73,3 +77,92 @@ def delete_instructor_project(project_name: str) -> Dict[str, Any]:
 
 
 
+def index_instructor_project(repo_url):
+    # Convert HttpUrl object to string if necessary
+    repo_url_str = str(repo_url)
+    
+    # Extract project name from repo URL
+    project_name = repo_url_str.rstrip('/').split('/')[-1].replace('.git', '')
+    parent_path = Path("instructor_projects") / project_name
+    parent_path.mkdir(parents=True, exist_ok=True)
+
+    try:
+        # 1️⃣ Get all branches
+        cmd = ["git", "ls-remote", "--heads", repo_url_str]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        branches = [
+            line.split()[1].replace("refs/heads/", "")
+            for line in result.stdout.strip().split("\n")
+            if line
+        ]
+        if not branches:
+            raise HTTPException(status_code=404, detail="No branches found in repository")
+
+        cloned_branches = []
+        indexing_results = []
+        
+        for branch in branches:
+            branch_dir = parent_path / branch
+            branch_dir.mkdir(exist_ok=True)
+
+            try:
+                # Clone only that branch
+                subprocess.run(
+                    [
+                        "git", "clone", "--branch", branch, "--single-branch",
+                        "--depth", "1", repo_url_str, str(branch_dir)
+                    ],
+                    check=True
+                )
+
+                # Remove .git directory
+                git_dir = branch_dir / ".git"
+                if git_dir.exists():
+                    shutil.rmtree(git_dir)
+
+                cloned_branches.append(branch)
+                
+                # Index the cloned branch
+                print(f"Starting indexing for {project_name}/{branch}")
+                index_result = indexing_service.index_instructor_project(project_name, branch)
+                indexing_results.append({
+                    "branch": branch,
+                    "indexing_result": index_result
+                })
+                
+                if index_result.get("status") == "success":
+                    print(f"Successfully indexed {project_name}/{branch}")
+                else:
+                    print(f"Indexing failed for {project_name}/{branch}: {index_result.get('error', 'Unknown error')}")
+                    
+            except subprocess.CalledProcessError as e:
+                # If cloning fails for this branch, continue with others
+                print(f"Failed to clone branch {branch}: {e}")
+                indexing_results.append({
+                    "branch": branch,
+                    "indexing_result": {"error": f"Clone failed: {str(e)}"}
+                })
+                continue
+
+        # Calculate indexing summary
+        successful_indexes = sum(1 for result in indexing_results 
+                               if result["indexing_result"].get("status") == "success")
+        
+        return {
+            "status": "success",
+            "project_name": project_name,
+            "parent_folder": str(parent_path),
+            "cloned_branches": cloned_branches,
+            "indexing_results": indexing_results,
+            "indexing_summary": {
+                "total_branches": len(branches),
+                "successfully_cloned": len(cloned_branches),
+                "successfully_indexed": successful_indexes,
+                "failed_indexes": len(indexing_results) - successful_indexes
+            }
+        }
+
+    except subprocess.CalledProcessError as e:
+        raise HTTPException(status_code=500, detail=f"Git command failed: {e.stderr}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
