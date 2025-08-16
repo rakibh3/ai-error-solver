@@ -1,0 +1,14 @@
+name: ai-error-solver-infra
+runtime: nodejs
+description: AWS infrastructure for AI Error Solver Backend
+
+config:
+  aws:region:
+    description: AWS region
+    default: us-east-1
+  instanceType:
+    description: EC2 instance type
+    default: t3.micro
+  keyName:
+    description: EC2 Key Pair name
+    default: ai-error-solver-key

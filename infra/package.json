@@ -1,0 +1,21 @@
+{
+  "name": "ai-error-solver-infra",
+  "version": "1.0.0",
+  "description": "Infrastructure for AI Error Solver Backend",
+  "main": "index.ts",
+  "scripts": {
+    "build": "tsc",
+    "up": "pulumi up",
+    "down": "pulumi down",
+    "preview": "pulumi preview",
+    "deploy": "npm run build && pulumi up --yes"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@pulumi/aws": "^6.0.0",
+    "@pulumi/pulumi": "^3.0.0"
+  }
+}
