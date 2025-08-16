@@ -48,5 +48,9 @@ app.include_router(auth_router, prefix="/api/v1/auth", tags=["Authentication API
 def read_root():
     return {"message": "Server is running"}
 
+@app.get("/health", tags=["Health Check"])
+def health_check():
+    return {"status": "healthy", "message": "AI Error Solver Backend is running"}
+
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

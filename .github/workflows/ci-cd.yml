@@ -9,7 +9,7 @@ on:
 
 env:
   DOCKER_IMAGE: bayajid23/ai-error-solver-backend
-  AWS_REGION: us-east-1
+  AWS_REGION: ap-southeast-1
 
 jobs:
   build-and-deploy:

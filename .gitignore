@@ -29,3 +29,5 @@ commit_message.txt
 # Rules files
 .cursor
 .windsurf
+
+node_modules/
