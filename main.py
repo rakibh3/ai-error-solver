@@ -3,6 +3,11 @@ from fastapi import FastAPI
 from app.api.student import router as student_router
 from app.api.index import router as index_router
 from app.api.project import router as project_router
+from app.api.auth import router as auth_router
+from app.core.database import engine, Base
+
+# Create database tables
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Error Navigator API",
@@ -28,11 +33,16 @@ app.openapi_tags = [
         "name": "Student Project API",
         "description": "Student project submission and analysis. Enables learners to upload their code projects and receive AI-powered error detection and step-by-step solutions.",
     },
+    {
+        "name": "Authentication API",
+        "description": "Authentication and authorization operations. Handles user registration, login, and role-based access control.",
+    }
 ]
 
 app.include_router(project_router, prefix="/api/v1/project", tags=["Project API"])
 app.include_router(index_router, prefix="/api/v1/index", tags=["Index API"])
 app.include_router(student_router, prefix="/api/v1/student", tags=["Student Project API"])
+app.include_router(auth_router, prefix="/api/v1/auth", tags=["Authentication API"])
 
 @app.get("/", tags=["Root API"])
 def read_root():
