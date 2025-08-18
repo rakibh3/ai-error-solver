@@ -1,7 +1,9 @@
-from fastapi import APIRouter, HTTPException, Path
+from fastapi import APIRouter, HTTPException, Path, Depends
 from typing import Union
 from app.services import instructor_service
 from app.schemas.schemas import InstructorProjectDeleteResponse, ErrorResponse, RepoRequest, RepoResponse
+from app.models.user import User
+from app.middleware.role_checker import require_admin, require_instructor_or_admin
 
 router = APIRouter()
 
@@ -20,16 +22,16 @@ router = APIRouter()
         }
     }
 )
-def index_instructor_project(request: RepoRequest):
+def index_instructor_project(request: RepoRequest, current_user: User = Depends(require_instructor_or_admin)):
     return instructor_service.index_instructor_project(request.repo_url)
 
 
 @router.get("/instructor-projects")
-def list_instructor_projects():
+def list_instructor_projects(current_user: User = Depends(require_instructor_or_admin)):
     return instructor_service.list_instructor_projects()
 
 @router.get("/instructor-projects/{project_name}/branches")
-def list_project_branches(project_name: str):
+def list_project_branches(project_name: str, current_user: User = Depends(require_instructor_or_admin)):
     return instructor_service.list_project_branches(project_name)
 
 @router.delete(
@@ -53,7 +55,8 @@ def list_project_branches(project_name: str):
     }
 )
 def delete_instructor_project(
-    instructor_project_name: str = Path(..., description="Name of the instructor project to delete")
+    instructor_project_name: str = Path(..., description="Name of the instructor project to delete"),
+    current_user: User = Depends(require_admin)
 ):
     """
     Delete an instructor project and all its branches.

@@ -6,6 +6,7 @@ from fastapi import UploadFile
 from app.utils.cleanup import cleanup_student_project
 
 def save_student_project(project_name: str, file: UploadFile):
+    print(f"Project Name", project_name)
     # Generate a unique ID for the student project
     student_project_id = str(uuid.uuid4())
     student_project_dir = os.path.join("student_projects", project_name, student_project_id)

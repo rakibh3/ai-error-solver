@@ -5,9 +5,9 @@ from app.core import config
 
 def get_qdrant_client() -> QdrantClient:
     """Initialize and return a Qdrant client"""
+    url = f"http://{config.QDRANT_HOST}:{config.QDRANT_PORT}"
     return QdrantClient(
-        host=config.QDRANT_HOST,
-        port=config.QDRANT_PORT,
+        url=url,
         api_key=config.QDRANT_API_KEY
     )
 

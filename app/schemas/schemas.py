@@ -64,3 +64,6 @@ class RepoResponse(BaseModel):
     status: str
     parent_folder: str
     cloned_branches: list[str]
+
+class ProjectUploadRequest(BaseModel):
+    project_name: str

@@ -78,8 +78,9 @@ def get_all_indexed_projects() -> Dict[str, Any]:
         
         return {
             "status": "success",
+            "message": "Retrieved indexed projects successfully",
+            "indexed_projects": indexed_projects,
             "total_indexed_projects": len(indexed_projects),
-            "indexed_projects": indexed_projects
         }
         
     except Exception as e:

@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from app.models.user import User
-from app.schemas.user import UserCreate, UserToken, UserLoginResponse, UserResponse
+from app.schemas.user import UserCreate, UserToken, UserLoginResponse, UserResponse, UserLogin
 from app.core.security import create_access_token, verify_password, hash_password
 from fastapi import HTTPException, status
 from typing import Optional
@@ -124,7 +124,7 @@ def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
     return user
 
 
-def login(db: Session, email: str, password: str) -> UserLoginResponse:
+def login(db: Session, user: UserLogin) -> UserLoginResponse:
     """
     Authenticate user and return login response with user data and token.
     
@@ -139,9 +139,9 @@ def login(db: Session, email: str, password: str) -> UserLoginResponse:
     Raises:
         HTTPException: If authentication fails
     """
-    user = authenticate_user(db, email, password)
+    user = authenticate_user(db, user.email, user.password)
     if not user:
-        logger.warning(f"Failed login attempt for email: {email}")
+        logger.warning(f"Failed login attempt for email: {user.email}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
@@ -160,11 +160,11 @@ def login(db: Session, email: str, password: str) -> UserLoginResponse:
         user_response = UserResponse.model_validate(user)
         token = UserToken(access_token=access_token, token_type="bearer")
         
-        logger.info(f"Successful login for user: {email}")
+        logger.info(f"Successful login for user: {user.email}")
         return UserLoginResponse(user=user_response, token=token)
         
     except Exception as e:
-        logger.error(f"Error during login process for {email}: {e}")
+        logger.error(f"Error during login process for {user.email}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error during login"
