@@ -68,9 +68,33 @@ def analyze_code(
         {[doc.page_content for doc in relevant_docs]}
         ---
 
-        Your task is to identify the error in the student's code and provide a clear, step-by-step instruction for the learner on how to fix it.
-        The instruction must include the specific file, line number, and the exact code to be changed.
-        Provide the solution in a structured format.
+       
+        
+        ### Task
+        1. Identify the exact mistake in the student’s code.
+        2. Provide a clear step-by-step fix with:
+        - File name
+        - Line number
+        - Exact code replacement
+
+        ### Response Rules
+        - Output **only** valid JSON (no extra text).
+        - Keep the explanation **concise and to the point** (1–2 short sentences).
+        - Remove Markdown, just get JSON
+        - Use this schema:
+
+        {{
+            "error_explanation": "Briefly state the root cause.",
+            "fix_instructions": {{
+                "file": "path/to/file.ext",
+                "line": 42,
+                "change": {{
+                "old_code": "incorrect_code_here()",
+                "new_code": "correct_code_here()"
+                }}
+            }}
+        }}
+
         """
 
         # Generate analysis using Gemini
@@ -78,7 +102,6 @@ def analyze_code(
         response = model.generate_content(prompt)
         
         return {
-            "status": "success",
             "analysis": response.text,
         }
         

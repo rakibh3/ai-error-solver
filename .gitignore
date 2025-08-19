@@ -30,3 +30,7 @@ commit_message.txt
 # Rules files
 .cursor
 .windsurf
+.prompt
+
+book-review.zip
+book-review
