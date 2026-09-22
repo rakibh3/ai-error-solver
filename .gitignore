@@ -13,12 +13,6 @@ venv
 # Environments 
 .env
 
-# md files
-GEMINI.md
-AGENT.md
-CLAUDE.md
-PRD.md
-
 # Project files
 student_projects
 instructor_projects
@@ -26,11 +20,6 @@ vectorstore
 
 # Text files
 commit_message.txt
-
-# Rules files
-.cursor
-.windsurf
-.prompt
 
 book-review.zip
 book-review
