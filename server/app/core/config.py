@@ -53,6 +53,21 @@ DATABASE_URL = _build_database_url()
 
 # JWT Configuration
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+
+# Tokens carry only an email, so anyone who knows the key can mint an admin
+# token. Refuse to start with a missing, short, or published placeholder key.
+_JWT_PLACEHOLDERS = {"your-super-secret-jwt-key-change-this-in-production"}
+_JWT_MIN_BYTES = 32
+if (
+    not JWT_SECRET_KEY
+    or JWT_SECRET_KEY in _JWT_PLACEHOLDERS
+    or len(JWT_SECRET_KEY.encode()) < _JWT_MIN_BYTES
+):
+    raise RuntimeError(
+        f"JWT_SECRET_KEY must be a random secret of at least {_JWT_MIN_BYTES} bytes "
+        "(not the .env.example placeholder). Generate one with: "
+        "python -c 'import secrets; print(secrets.token_urlsafe(48))'"
+    )
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 30
 
@@ -67,15 +82,37 @@ ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
 ADMIN_FULLNAME = os.getenv("ADMIN_FULLNAME", "Administrator")
 
-# Upload limits
-MAX_UPLOAD_BYTES = _int_env("MAX_UPLOAD_BYTES", 25 * 1024 * 1024)
-MAX_EXTRACTED_BYTES = _int_env("MAX_EXTRACTED_BYTES", 50 * 1024 * 1024)
+_MB = 1024 * 1024
+
+
+def _mb_env(name: str, default_mb: int) -> int:
+    """Read a size configured in megabytes (`<NAME>_MB`) and return it in bytes.
+
+    Falls back to the legacy byte-valued `<NAME>_BYTES` variable so existing
+    deployments keep their limits, then to `default_mb`. Non-positive or
+    unparseable values are ignored.
+    """
+    raw = os.getenv(f"{name}_MB")
+    if raw is not None and raw.strip():
+        try:
+            mb = float(raw)
+            if mb > 0:
+                return int(mb * _MB)
+        except ValueError:
+            pass
+    legacy = _int_env(f"{name}_BYTES", 0)
+    return legacy if legacy > 0 else default_mb * _MB
+
+
+# Upload limits (configured in MB, used in bytes)
+MAX_UPLOAD_BYTES = _mb_env("MAX_UPLOAD", 25)
+MAX_EXTRACTED_BYTES = _mb_env("MAX_EXTRACTED", 50)
 MAX_ARCHIVE_MEMBERS = _int_env("MAX_ARCHIVE_MEMBERS", 2000)
-MAX_MEMBER_BYTES = _int_env("MAX_MEMBER_BYTES", 10 * 1024 * 1024)
+MAX_MEMBER_BYTES = _mb_env("MAX_MEMBER", 10)
 
 # Per-user quotas
 USER_SUBMISSION_QUOTA = _int_env("USER_SUBMISSION_QUOTA", 5)
-USER_STORAGE_QUOTA_BYTES = _int_env("USER_STORAGE_QUOTA_BYTES", 200 * 1024 * 1024)
+USER_STORAGE_QUOTA_BYTES = _mb_env("USER_STORAGE_QUOTA", 200)
 
 # Retrieval / analysis
 RETRIEVAL_K = _int_env("RETRIEVAL_K", 8)

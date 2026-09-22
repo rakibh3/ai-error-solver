@@ -65,14 +65,14 @@ so one user behind a NAT cannot exhaust everyone's budget.
 
 ## Size and count limits
 
-Byte values are exact binary sizes (1 MB = 1 048 576 B).
+Sizes are set in **megabytes** (`*_MB`, decimals allowed, e.g. `2.5`) and converted to bytes internally using binary MB (1 MB = 1 048 576 B). The older `*_BYTES` names are still read as a fallback when the `*_MB` variable is unset, so existing deployments keep their limits.
 
-| Variable | Bytes | MB | GB | What it counts | Raise it → / Lower it → |
+| Variable | MB (default) | Bytes | GB | What it counts | Raise it → / Lower it → |
 |---|---|---|---|---|---|
-| `MAX_UPLOAD_BYTES` | 26 214 400 | 25 | 0.024 | The compressed zip, measured while streaming to disk. | Accepts bigger projects, more bandwidth and disk per request / rejects with **413** sooner. |
-| `MAX_EXTRACTED_BYTES` | 52 428 800 | 50 | 0.049 | Total bytes written during extraction — the zip-bomb ceiling. | Tolerates higher compression ratios, risks filling the disk / rejects legitimately large repos. |
-| `MAX_MEMBER_BYTES` | 10 485 760 | 10 | 0.010 | Any single file inside the zip. | Allows large individual files such as media or datasets / blocks them while still accepting the archive. |
-| `USER_STORAGE_QUOTA_BYTES` | 209 715 200 | 200 | 0.195 | Total on-disk bytes across one user's submissions. | More disk per user / users hit **409** sooner and must delete a submission. |
+| `MAX_UPLOAD_MB` | 25 | 26 214 400 | 0.024 | The compressed zip, measured while streaming to disk. | Accepts bigger projects, more bandwidth and disk per request / rejects with **413** sooner. |
+| `MAX_EXTRACTED_MB` | 50 | 52 428 800 | 0.049 | Total bytes written during extraction — the zip-bomb ceiling. | Tolerates higher compression ratios, risks filling the disk / rejects legitimately large repos. |
+| `MAX_MEMBER_MB` | 10 | 10 485 760 | 0.010 | Any single file inside the zip. | Allows large individual files such as media or datasets / blocks them while still accepting the archive. |
+| `USER_STORAGE_QUOTA_MB` | 200 | 209 715 200 | 0.195 | Total on-disk bytes across one user's submissions. | More disk per user / users hit **409** sooner and must delete a submission. |
 
 | Variable | Default | What it counts | Raise it → / Lower it → |
 |---|---|---|---|

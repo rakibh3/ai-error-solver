@@ -4,7 +4,6 @@ import uuid
 from sqlalchemy import (
     Column,
     DateTime,
-    Enum,
     ForeignKey,
     String,
     Text,
@@ -12,7 +11,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
-from app.models.types import JSONType, UUIDType
+from app.models.types import JSONType, UUIDType, ValueEnum
 
 from app.core.database import Base
 
@@ -40,7 +39,7 @@ class Analysis(Base):
         nullable=True,
     )
     error_message = Column(Text, nullable=False)
-    status = Column(Enum(AnalysisStatus, name="analysisstatus"), nullable=False)
+    status = Column(ValueEnum(AnalysisStatus, name="analysisstatus"), nullable=False)
     result = Column(JSONType, nullable=True)
     raw_response = Column(Text, nullable=True)
     failure_reason = Column(Text, nullable=True)

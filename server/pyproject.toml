@@ -7,23 +7,23 @@ requires-python = ">=3.12"
 dependencies = [
     "qdrant-client>=1.7.0",
     "langchain-qdrant>=0.1.0",
-    "fastapi>=0.116.1",
+    "fastapi>=0.141.1",
     "openai>=1.60.0",
-    "langchain-community>=0.3.27",
     "langchain-voyageai>=0.1.7",
-    "python-dotenv>=1.1.1",
-    "python-multipart>=0.0.20",
+    "python-dotenv>=1.2.2",
+    "python-multipart>=0.0.31",
     "uvicorn>=0.35.0",
     "voyageai>=0.3.4",
-    "langchain>=0.3.27",
     "sqlalchemy>=2.0.42",
     "psycopg2-binary>=2.9.10",
-    "passlib>=1.7.4",
     "bcrypt>=4.2.0",
-    "pyjwt>=2.10.1",
+    "pyjwt>=2.13.0",
     "pydantic[email]>=2.11.7",
     "alembic>=1.14.0",
     "slowapi>=0.1.9",
+    "langchain-text-splitters>=1.1.2",
+    "langchain-core>=1.2.22",
+    "langsmith>=0.8.18",
 ]
 
 [dependency-groups]
@@ -31,6 +31,26 @@ dev = [
     "pytest>=8.3.0",
     "pytest-asyncio>=0.24.0",
     "httpx>=0.28.0",
+]
+
+[tool.uv]
+# Floors for transitive dependencies with published advisories (OSV). These
+# only raise minimums within each package's current major line.
+constraint-dependencies = [
+    "aiohttp>=3.14.3",
+    "anyio>=4.14.2",
+    "click>=8.3.3",
+    "filelock>=3.20.3",
+    "h2>=4.4.1",
+    "httplib2>=0.32.0",
+    "idna>=3.15",
+    "marshmallow>=3.26.2",
+    "orjson>=3.11.6",
+    "pillow>=12.3.0",
+    "protobuf>=5.29.6",
+    "pyasn1>=0.6.4",
+    "requests>=2.33.0",
+    "urllib3>=2.7.0",
 ]
 
 [tool.pytest.ini_options]

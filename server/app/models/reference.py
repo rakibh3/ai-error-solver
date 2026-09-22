@@ -4,7 +4,6 @@ import uuid
 from sqlalchemy import (
     Column,
     DateTime,
-    Enum,
     ForeignKey,
     Integer,
     String,
@@ -14,7 +13,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
-from app.models.types import UUIDType
+from app.models.types import UUIDType, ValueEnum
 
 from app.core.database import Base
 
@@ -68,7 +67,7 @@ class ReferenceBranch(Base):
     branch_name = Column(String(255), nullable=False)
     collection_name = Column(String(255), unique=True, nullable=False)
     status = Column(
-        Enum(BranchStatus, name="branchstatus"),
+        ValueEnum(BranchStatus, name="branchstatus"),
         default=BranchStatus.PENDING,
         server_default=BranchStatus.PENDING.value,
         nullable=False,

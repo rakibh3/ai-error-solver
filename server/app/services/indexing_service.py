@@ -1,6 +1,6 @@
 import os
 import hashlib
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_qdrant import QdrantVectorStore
 from langchain_voyageai import VoyageAIEmbeddings
 from qdrant_client.models import Distance

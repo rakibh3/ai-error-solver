@@ -1,18 +1,25 @@
+import bcrypt
 import jwt
 import logging
-from passlib.context import CryptContext
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 from app.core.config import JWT_SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 
-# Password hashing context
-pwd_context = CryptContext(
-    schemes=["bcrypt"],
-    deprecated="auto",
-    bcrypt__rounds=10
-)
+# bcrypt is called directly: passlib is unmaintained and breaks against
+# bcrypt>=4.1 (every hash raised, so registration and login returned 500).
+# Hashes stay standard `$2b$` strings, so rows written via passlib still verify.
+BCRYPT_ROUNDS = 12
+
+# bcrypt only reads the first 72 bytes; bcrypt>=5 raises instead of silently
+# truncating. Truncate explicitly so hashes created by passlib (which truncated)
+# keep verifying for passwords longer than that.
+_BCRYPT_MAX_BYTES = 72
 
 logger = logging.getLogger(__name__)
+
+
+def _bcrypt_input(password: str) -> bytes:
+    return password.encode("utf-8")[:_BCRYPT_MAX_BYTES]
 
 
 def hash_password(password: str) -> str:
@@ -32,7 +39,7 @@ def hash_password(password: str) -> str:
         raise ValueError("Password cannot be empty")
     
     try:
-        return pwd_context.hash(password)
+        return bcrypt.hashpw(_bcrypt_input(password), bcrypt.gensalt(BCRYPT_ROUNDS)).decode("ascii")
     except Exception as e:
         logger.error(f"Error hashing password: {e}")
         raise ValueError("Failed to hash password")
@@ -55,7 +62,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         raise ValueError("Hashed password cannot be empty")
 
     try:
-        return pwd_context.verify(plain_password, hashed_password)
+        return bcrypt.checkpw(_bcrypt_input(plain_password), hashed_password.encode("ascii"))
     except Exception as e:
         logger.error(f"Error verifying password: {e}")
         return False
