@@ -30,7 +30,8 @@ uv run uvicorn main:app --reload
 ```
 
 Requires Postgres and Qdrant. `python create_db.py` checks the database
-connection.
+connection. Every variable in `.env.example` is documented in
+[docs/ENV.md](docs/ENV.md).
 
 ### Postgres and Qdrant via Docker
 
