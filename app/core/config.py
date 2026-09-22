@@ -1,7 +1,6 @@
 import os
 from urllib.parse import quote
 
-import google.generativeai as genai
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -18,7 +17,15 @@ def _int_env(name: str, default: int) -> int:
         return default
 
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+# LLM provider. OpenRouter speaks the OpenAI chat-completions protocol, so the
+# `openai` SDK is pointed at its base URL rather than a dedicated client.
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+OPENROUTER_BASE_URL = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+# Optional attribution headers; they only affect your listing on openrouter.ai.
+OPENROUTER_SITE_URL = os.getenv("OPENROUTER_SITE_URL")
+OPENROUTER_APP_TITLE = os.getenv("OPENROUTER_APP_TITLE", "Error Navigator")
+
+# Embeddings still go to Voyage directly -- OpenRouter routes chat, not embeddings.
 VOYAGE_API_KEY = os.getenv("VOYAGE_API_KEY")
 
 # Database Configuration
@@ -72,7 +79,20 @@ USER_STORAGE_QUOTA_BYTES = _int_env("USER_STORAGE_QUOTA_BYTES", 200 * 1024 * 102
 
 # Retrieval / analysis
 RETRIEVAL_K = _int_env("RETRIEVAL_K", 8)
-ANALYSIS_MODEL = os.getenv("ANALYSIS_MODEL", "gemini-2.5-flash")
+# Model names live in the environment, never in code -- no in-code default, so
+# swapping a model is an .env edit and a restart.
+#
+# ANALYSIS_MODEL is an OpenRouter slug (`vendor/model`), not a bare provider
+# model name. EMBEDDING_MODEL is a Voyage model and goes to Voyage directly.
+#
+# EMBEDDING_MODEL must match what the existing Qdrant collections were built
+# with: vectors from a different model are not comparable, and a model with a
+# different dimension will fail outright. Changing it means re-indexing every
+# reference branch.
+ANALYSIS_MODEL = os.getenv("ANALYSIS_MODEL")
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL")
+# The SDK default is 10 minutes, which outlives any sane request.
+ANALYSIS_TIMEOUT_SECONDS = _int_env("ANALYSIS_TIMEOUT_SECONDS", 60)
 MAX_ERROR_MESSAGE_CHARS = _int_env("MAX_ERROR_MESSAGE_CHARS", 8000)
 MAX_STUDENT_CONTEXT_CHARS = _int_env("MAX_STUDENT_CONTEXT_CHARS", 60000)
 MAX_CANDIDATE_FILES = _int_env("MAX_CANDIDATE_FILES", 12)
@@ -85,5 +105,3 @@ UPLOAD_RATE_LIMIT = os.getenv("UPLOAD_RATE_LIMIT", "20/hour")
 # Storage roots
 REFERENCE_PROJECTS_DIR = os.getenv("REFERENCE_PROJECTS_DIR", "instructor_projects")
 SUBMISSIONS_DIR = os.getenv("SUBMISSIONS_DIR", "student_projects")
-
-genai.configure(api_key=GEMINI_API_KEY)

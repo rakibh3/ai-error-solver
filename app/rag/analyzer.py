@@ -1,6 +1,11 @@
 """RAG analysis against an indexed reference branch.
 
-Changes from the previous version:
+Generation goes through OpenRouter, which speaks the OpenAI chat-completions
+protocol -- hence the `openai` SDK pointed at `OPENROUTER_BASE_URL` rather than
+a provider-specific client. Retrieval embeddings still go to Voyage directly;
+OpenRouter routes chat, not embeddings.
+
+Changes from the earlier version:
   * the retrieval query is built from the error message and the file paths in
     the traceback, not from the entire concatenated codebase;
   * the formatted `instructor_context` is actually interpolated into the prompt
@@ -11,11 +16,12 @@ Changes from the previous version:
 import json
 import logging
 import re
+from functools import lru_cache
 from typing import Any, Dict, List
 
-import google.generativeai as genai
 from langchain_qdrant import QdrantVectorStore
 from langchain_voyageai import VoyageAIEmbeddings
+from openai import OpenAI, OpenAIError
 from pydantic import ValidationError
 
 from app.core import config
@@ -32,6 +38,34 @@ _FENCE_RE = re.compile(r"^\s*```(?:json)?\s*|\s*```\s*$", re.MULTILINE)
 
 class AnalyzerError(Exception):
     """Raised when analysis cannot complete. The message is stored on the row."""
+
+
+@lru_cache(maxsize=1)
+def _client() -> OpenAI:
+    """The OpenRouter client, built once.
+
+    Built lazily rather than at import so a missing key surfaces as a failed
+    analysis row instead of preventing the app from starting.
+    """
+    if not config.OPENROUTER_API_KEY:
+        raise AnalyzerError("OPENROUTER_API_KEY is not set")
+    if not config.ANALYSIS_MODEL:
+        raise AnalyzerError("ANALYSIS_MODEL is not set")
+    return OpenAI(
+        base_url=config.OPENROUTER_BASE_URL,
+        api_key=config.OPENROUTER_API_KEY,
+        timeout=config.ANALYSIS_TIMEOUT_SECONDS,
+    )
+
+
+def _attribution_headers() -> Dict[str, str]:
+    """Optional headers that attribute usage on openrouter.ai rankings."""
+    headers = {}
+    if config.OPENROUTER_SITE_URL:
+        headers["HTTP-Referer"] = config.OPENROUTER_SITE_URL
+    if config.OPENROUTER_APP_TITLE:
+        headers["X-OpenRouter-Title"] = config.OPENROUTER_APP_TITLE
+    return headers
 
 
 def extract_paths(error_message: str) -> List[str]:
@@ -139,8 +173,11 @@ def analyze_code(
     except Exception as e:
         raise AnalyzerError(f"Failed to connect to Qdrant: {e}")
 
+    if not config.EMBEDDING_MODEL:
+        raise AnalyzerError("EMBEDDING_MODEL is not set")
+
     embeddings = VoyageAIEmbeddings(
-        model="voyage-code-3", voyage_api_key=config.VOYAGE_API_KEY
+        model=config.EMBEDDING_MODEL, voyage_api_key=config.VOYAGE_API_KEY
     )
 
     try:
@@ -165,12 +202,30 @@ def analyze_code(
 
     prompt = _build_prompt(error_message, student_code_context, reference_context)
 
+    client = _client()
     try:
-        model = genai.GenerativeModel(config.ANALYSIS_MODEL)
-        response = model.generate_content(prompt)
-        raw = response.text
-    except Exception as e:
+        completion = client.chat.completions.create(
+            model=config.ANALYSIS_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            # The response is parsed as JSON, so sampling buys nothing.
+            temperature=0,
+            extra_headers=_attribution_headers() or None,
+        )
+    except OpenAIError as e:
         raise AnalyzerError(f"Model call failed: {e}")
 
+    # OpenRouter returns 200 with an empty `choices` list when the upstream
+    # provider fails mid-request; the reason is on a non-standard `error` key.
+    if not completion.choices:
+        detail = getattr(completion, "error", None) or "no choices returned"
+        raise AnalyzerError(f"Model call failed: {detail}")
+
+    raw = completion.choices[0].message.content
     result = parse_model_output(raw)
-    return {"raw": raw, "result": result}
+    # Routing and fallbacks mean the model that answered is not always the one
+    # asked for, so report what actually ran.
+    return {
+        "raw": raw,
+        "result": result,
+        "model": completion.model or config.ANALYSIS_MODEL,
+    }

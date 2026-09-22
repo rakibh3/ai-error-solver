@@ -146,8 +146,11 @@ def index_reference_branch(project_name: str, branch_name: str, project_path: st
     print(f"Total chunks created: {len(texts)}, Unique chunks to be indexed: {len(unique_texts)}")
 
     # Initialize embeddings
+    if not config.EMBEDDING_MODEL:
+        return {"error": "EMBEDDING_MODEL is not set"}
+
     embeddings = VoyageAIEmbeddings(
-        model="voyage-code-3",
+        model=config.EMBEDDING_MODEL,
         voyage_api_key=config.VOYAGE_API_KEY
     )
     

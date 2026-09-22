@@ -126,6 +126,30 @@ Admin ingestion returns `202` immediately and indexes in the background; poll
 `GET /api/v1/admin/reference-projects` for per-branch status
 (`pending` → `indexing` → `ready` | `failed`).
 
+## Model provider
+
+Chat generation is routed through [OpenRouter](https://openrouter.ai), which
+speaks the OpenAI chat-completions protocol — the `openai` SDK is pointed at
+`OPENROUTER_BASE_URL`, so switching models is a change to `ANALYSIS_MODEL`
+(an OpenRouter `vendor/model` slug) rather than a code change. Set
+`OPENROUTER_API_KEY` in `.env`.
+
+Embeddings are unaffected and still go to Voyage directly; OpenRouter routes
+chat, not embeddings, so `VOYAGE_API_KEY` is still required.
+
+Both model names live in `.env` and have **no in-code default** — `ANALYSIS_MODEL`
+(an OpenRouter slug) and `EMBEDDING_MODEL` (a Voyage model). Unset, an analysis
+is recorded as `failed` naming the missing variable rather than falling back to
+a model you did not choose.
+
+Changing `EMBEDDING_MODEL` invalidates every existing Qdrant collection: vectors
+from a different model are not comparable, and a different dimension fails
+outright. Re-index every reference branch after changing it.
+
+OpenRouter may route to a different model than the one requested. The model
+recorded on each `analyses` row is the one that actually answered, not the one
+asked for.
+
 ## Dependencies
 
 `uv.lock` predates this change and must be regenerated with `uv sync` or

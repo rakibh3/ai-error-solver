@@ -407,7 +407,7 @@ class AnalysisOut(BaseModel):
                         },
                     },
                     "failure_reason": None,
-                    "model": "gemini-2.5-flash",
+                    "model": "google/gemini-2.5-flash",
                     "created_at": "2026-09-22T09:18:02Z",
                 },
                 {
@@ -418,7 +418,7 @@ class AnalysisOut(BaseModel):
                     "status": "failed",
                     "result": None,
                     "failure_reason": "Model response did not match the expected schema",
-                    "model": "gemini-2.5-flash",
+                    "model": "google/gemini-2.5-flash",
                     "created_at": "2026-09-22T09:20:31Z",
                 },
             ]
@@ -453,7 +453,7 @@ class AnalysisOut(BaseModel):
         examples=["Model response did not match the expected schema"],
     )
     model: str = Field(
-        ..., description="The model that produced this result.", examples=["gemini-2.5-flash"]
+        ..., description="The model that produced this result.", examples=["google/gemini-2.5-flash"]
     )
     created_at: datetime = Field(..., examples=["2026-09-22T09:18:02Z"])
 

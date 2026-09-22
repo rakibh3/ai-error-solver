@@ -112,7 +112,9 @@ def run_analysis(
         branch_id=branch.id,
         error_message=error_message,
         status=AnalysisStatus.FAILED,
-        model=config.ANALYSIS_MODEL,
+        # NOT NULL, and this row is written even when the analysis fails --
+        # including the failure where ANALYSIS_MODEL itself is unset.
+        model=config.ANALYSIS_MODEL or "(unset)",
     )
 
     if not root.is_dir():
@@ -140,6 +142,8 @@ def run_analysis(
         analysis.status = AnalysisStatus.SUCCESS
         analysis.result = outcome["result"].model_dump()
         analysis.raw_response = outcome["raw"]
+        # OpenRouter may route to a different model than the one requested.
+        analysis.model = outcome.get("model") or config.ANALYSIS_MODEL
     except AnalyzerError as e:
         logger.info("Analysis failed for submission %s: %s", submission.id, e)
         analysis.failure_reason = str(e)[:2000]
