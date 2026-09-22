@@ -15,7 +15,6 @@ import {
   UploadCloud,
   Wand2,
 } from "lucide-react"
-import { Brand } from "@/components/brand"
 import { RetrievalGraph } from "@/components/retrieval-graph"
 import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
@@ -30,7 +29,6 @@ export default function Page() {
       <HowItWorks />
       <ResultsPreview />
       <CTA />
-      <LandingFooter />
     </div>
   )
 }
@@ -347,26 +345,5 @@ function CTA() {
         </div>
       </div>
     </section>
-  )
-}
-
-function LandingFooter() {
-  return (
-    <footer className="border-t">
-      <div className="container mx-auto flex flex-col items-center justify-between gap-4 px-4 py-8 text-sm text-muted-foreground md:flex-row">
-        <Brand className="text-foreground" />
-        <nav className="flex items-center gap-4" aria-label="Footer">
-          <Link href="/how-it-works" className="hover:text-foreground">
-            How it works
-          </Link>
-          <Link href="/faq" className="hover:text-foreground">
-            FAQ
-          </Link>
-          <Link href="/login" className="hover:text-foreground">
-            Sign in
-          </Link>
-        </nav>
-      </div>
-    </footer>
   )
 }
