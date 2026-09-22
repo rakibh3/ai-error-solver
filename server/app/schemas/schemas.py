@@ -9,8 +9,9 @@ import uuid
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 
+from app.core import config
 from app.core.config import MAX_ERROR_MESSAGE_CHARS
 from app.models.analysis import AnalysisStatus
 from app.models.reference import BranchStatus
@@ -209,10 +210,35 @@ class RepoRequest(BaseModel):
         ...,
         description=(
             "HTTPS clone URL. Every branch is enumerated and indexed; the "
-            "project name is derived from the last path segment."
+            "project name is derived from the last path segment.\n\n"
+            "Must not embed credentials (`https://token@host/...`) — they would "
+            "be stored and shown to every admin. The host must be in the "
+            "server's `REPO_ALLOWED_HOSTS`."
         ),
         examples=["https://github.com/acme/fastapi-course.git"],
     )
+
+    @field_validator("repo_url")
+    @classmethod
+    def safe_repo_url(cls, v: HttpUrl) -> HttpUrl:
+        # Credentials in the URL would be persisted, returned by the admin
+        # API, rendered in the UI, and echoed in git's error output.
+        if v.username or v.password:
+            raise ValueError(
+                "Remove the credentials from the URL. Private repositories need a "
+                "server-side git credential, not a token embedded in the link."
+            )
+        if v.scheme != "https":
+            raise ValueError("Only https:// repository URLs are accepted")
+        # An allow-list keeps git from being pointed at internal hosts (SSRF).
+        host = (v.host or "").lower()
+        allowed = config.REPO_ALLOWED_HOSTS
+        if "*" not in allowed and host not in allowed:
+            raise ValueError(
+                f"Repositories from {host!r} are not allowed. Allowed hosts: "
+                + ", ".join(sorted(allowed))
+            )
+        return v
 
 
 class IngestAcceptedResponse(BaseModel):

@@ -10,6 +10,7 @@ from app.api.admin import router as admin_router
 from app.api.auth import router as auth_router
 from app.api.catalog import router as catalog_router
 from app.api.submissions import router as submissions_router
+from app.core import config
 from app.core.database import SessionLocal
 from app.core.limiter import limiter
 from app.services import reference_service
@@ -60,9 +61,11 @@ app = FastAPI(
     description=API_DESCRIPTION,
     version="2.0.0",
     summary="Compare your code against a reference solution and get a targeted fix.",
-    openapi_url="/api/v1/openapi.json",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    # All three are None when ENABLE_API_DOCS=false, so they 404 rather than
+    # mapping every endpoint (including the admin surface) for anyone.
+    openapi_url="/api/v1/openapi.json" if config.ENABLE_API_DOCS else None,
+    docs_url="/docs" if config.ENABLE_API_DOCS else None,
+    redoc_url="/redoc" if config.ENABLE_API_DOCS else None,
     contact={"name": "Error Navigator", "url": "https://error-navigator.com"},
     license_info={"name": "Proprietary"},
     servers=[

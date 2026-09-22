@@ -93,7 +93,6 @@ export default function DashboardPage() {
             onClick={() => setUploadOpen(true)}
             disabled={quotaReached}
             title={quotaReached ? "Delete a submission to free up a slot" : undefined}
-            className="bg-emerald-600 hover:bg-emerald-700"
           >
             <Plus />
             Upload project
@@ -143,7 +142,7 @@ export default function DashboardPage() {
               title="No submissions yet"
               description="Upload your project folder or a .zip. You can then pick a reference and paste the error you're seeing."
               action={
-                <Button onClick={() => setUploadOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
+                <Button onClick={() => setUploadOpen(true)}>
                   <Plus />
                   Upload your first project
                 </Button>
@@ -211,9 +210,9 @@ function SubmissionRow(props: {
   const href = `/dashboard/submissions/${s.id}`
   return (
     <li>
-      <Card className="group relative py-0 transition-colors hover:border-emerald-300">
+      <Card className="group relative py-0 transition-colors hover:border-emerald-500/50">
         <CardContent className="flex items-center gap-4 p-4">
-          <div className="hidden size-10 shrink-0 items-center justify-center rounded-md bg-emerald-50 text-emerald-700 sm:flex dark:bg-emerald-950">
+          <div className="hidden size-10 shrink-0 items-center justify-center rounded-md bg-emerald-50 text-emerald-700 sm:flex dark:bg-emerald-950 dark:text-emerald-300">
             <FileCode2 className="size-5" />
           </div>
           <div className="min-w-0 flex-1">
@@ -288,7 +287,7 @@ function ReferenceLibrary(props: {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Library className="size-4 text-emerald-600" />
+          <Library className="size-4 text-emerald-400" />
           Reference library
         </CardTitle>
         <CardDescription>Working solutions curated by administrators. Expand one to see its branches.</CardDescription>
@@ -327,7 +326,7 @@ function ReferenceItem({ project }: { project: CatalogProject }) {
       <Collapsible open={open} onOpenChange={setOpen}>
         <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
           <ChevronRight className={cn("size-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-90")} />
-          <FolderGit2 className="size-4 shrink-0 text-emerald-600" />
+          <FolderGit2 className="size-4 shrink-0 text-emerald-400" />
           <span className="min-w-0 flex-1 truncate font-medium">{project.name}</span>
           <Badge variant="secondary" className="shrink-0 tabular-nums">
             {project.ready_branch_count}

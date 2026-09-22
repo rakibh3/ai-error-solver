@@ -42,6 +42,27 @@ export function sessionCookieOptions(request: Request) {
 }
 
 /**
+ * The browser's IP, forwarded to the API as X-Forwarded-For so its per-IP rate
+ * limits see real clients instead of this server's address.
+ *
+ * Next.js sets X-Forwarded-For to the socket address only when the header is
+ * absent, so a client can supply its own. TRUSTED_PROXY_HOPS is the number of
+ * reverse proxies in front of Next.js that append to the header: the client is
+ * the entry that many places from the right. With 0 (no proxy) the rightmost
+ * entry is used, which a client talking to Next.js directly can spoof -- the
+ * API's per-account login limit still applies in that case.
+ */
+export function clientIp(request: Request): string | null {
+  const entries = (request.headers.get("x-forwarded-for") ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)
+  if (entries.length === 0) return null
+  const hops = Math.max(1, Number.parseInt(process.env.TRUSTED_PROXY_HOPS ?? "0", 10) || 0)
+  return entries[Math.max(0, entries.length - hops)] ?? null
+}
+
+/**
  * Reject cross-site state-changing requests. SameSite=Lax already withholds the
  * cookie from cross-site POSTs; this is a second, explicit check.
  */

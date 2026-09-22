@@ -171,7 +171,7 @@ function UserMenu() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="h-9 gap-2 px-2" aria-label="Account menu">
           <Avatar className="size-7">
-            <AvatarFallback className="bg-emerald-100 text-xs font-semibold text-emerald-800">
+            <AvatarFallback className="bg-emerald-100 text-xs font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
               {initials(user.fullname)}
             </AvatarFallback>
           </Avatar>
@@ -183,7 +183,7 @@ function UserMenu() {
           <div className="flex items-center justify-between gap-2">
             <span className="truncate">{user.fullname}</span>
             {isAdmin && (
-              <Badge variant="outline" className="gap-1 border-emerald-200 text-emerald-800">
+              <Badge variant="outline" className="gap-1 border-emerald-200 text-emerald-800 dark:border-emerald-900 dark:text-emerald-300">
                 <ShieldCheck className="size-3" />
                 Admin
               </Badge>

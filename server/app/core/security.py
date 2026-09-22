@@ -1,3 +1,6 @@
+import hashlib
+import hmac
+
 import bcrypt
 import jwt
 import logging
@@ -16,6 +19,19 @@ BCRYPT_ROUNDS = 12
 _BCRYPT_MAX_BYTES = 72
 
 logger = logging.getLogger(__name__)
+
+
+def email_fingerprint(email: str) -> str:
+    """Short keyed hash of an email, for logs.
+
+    Emails are personal data and a failed-login line keyed by raw email is a
+    ready-made target list. A keyed hash (not a bare SHA-256, which is
+    trivially reversible for known addresses) still lets repeated attempts on
+    one account be correlated.
+    """
+    key = b"log-fingerprint:" + JWT_SECRET_KEY.encode()
+    digest = hmac.new(key, email.strip().lower().encode(), hashlib.sha256).hexdigest()
+    return digest[:12]
 
 
 def _bcrypt_input(password: str) -> bytes:
@@ -97,7 +113,7 @@ def create_access_token(data: dict, expires_in: Optional[timedelta] = None):
         payload.update({"exp": expire})
         
         encoded_jwt = jwt.encode(payload, JWT_SECRET_KEY, algorithm=ALGORITHM)
-        logger.info(f"Access token created successfully for user: {data.get('email')}")
+        logger.info("Access token created for user id %s", data.get("sub"))
         return encoded_jwt
     except Exception as e:
         logger.error(f"Error creating access token: {e}")

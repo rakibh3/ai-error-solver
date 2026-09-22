@@ -32,7 +32,7 @@ export function AnalysisResultView({ analysis }: { analysis: Analysis }) {
   return (
     <div className="space-y-5">
       <div className="flex gap-3 rounded-lg border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-900 dark:bg-emerald-950/30">
-        <Lightbulb className="mt-0.5 size-5 shrink-0 text-emerald-600" />
+        <Lightbulb className="mt-0.5 size-5 shrink-0 text-emerald-400" />
         <div className="space-y-1">
           <div className="text-sm font-medium">What went wrong</div>
           <p className="text-sm leading-relaxed text-muted-foreground">{error_explanation}</p>

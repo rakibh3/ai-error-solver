@@ -147,9 +147,10 @@ def run_analysis(
     except AnalyzerError as e:
         logger.info("Analysis failed for submission %s: %s", submission.id, e)
         analysis.failure_reason = str(e)[:2000]
-    except Exception as e:
+    except Exception:
         logger.exception("Unexpected analysis error for submission %s", submission.id)
-        analysis.failure_reason = f"Unexpected error: {e}"[:2000]
+        # The traceback is in the log; the row is user-visible.
+        analysis.failure_reason = "Unexpected error while analysing. Please try again."
 
     db.add(analysis)
     db.commit()

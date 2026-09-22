@@ -131,15 +131,15 @@ export default function ReferencesPage() {
 
       {projects.data && projects.data.length > 0 && (
         <div className="flex flex-wrap gap-2 text-sm" aria-live="polite">
-          <Badge variant="outline" className="border-emerald-200 text-emerald-800">{totals.ready} ready</Badge>
+          <Badge variant="outline" className="border-emerald-200 text-emerald-800 dark:border-emerald-900 dark:text-emerald-300">{totals.ready} ready</Badge>
           {totals.busy > 0 && (
-            <Badge variant="outline" className="gap-1 border-amber-200 text-amber-800">
+            <Badge variant="outline" className="gap-1 border-amber-200 text-amber-800 dark:border-amber-900 dark:text-amber-300">
               <Loader2 className="size-3 animate-spin" />
               {totals.busy} in progress · auto-refreshing
             </Badge>
           )}
           {totals.failed > 0 && (
-            <Badge variant="outline" className="border-red-200 text-red-700">{totals.failed} failed</Badge>
+            <Badge variant="outline" className="border-red-200 text-red-700 dark:border-red-900 dark:text-red-300">{totals.failed} failed</Badge>
           )}
         </div>
       )}
@@ -251,7 +251,7 @@ function IngestCard({ onQueued }: { onQueued: () => void }) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Plus className="size-4 text-emerald-600" />
+          <Plus className="size-4 text-emerald-400" />
           Add a reference repository
         </CardTitle>
         <CardDescription>
@@ -285,7 +285,7 @@ function IngestCard({ onQueued }: { onQueued: () => void }) {
               </p>
             )}
           </div>
-          <Button type="submit" disabled={pending || !url.trim()} className="bg-emerald-600 hover:bg-emerald-700">
+          <Button type="submit" disabled={pending || !url.trim()}>
             {pending ? <Loader2 className="animate-spin" /> : <Plus />}
             {pending ? "Reading repository…" : "Add repository"}
           </Button>
@@ -333,7 +333,7 @@ function ProjectCard(props: {
                   aria-hidden="true"
                   className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-90"
                 />
-                <FolderGit2 className="size-4 shrink-0 text-emerald-600" />
+                <FolderGit2 className="size-4 shrink-0 text-emerald-400" />
                 <h2 className="truncate font-semibold">{p.name}</h2>
                 <span className="sr-only">{props.open ? "Collapse branches" : "Expand branches"}</span>
               </button>

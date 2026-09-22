@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.api import responses as r
 from app.core.config import AUTH_RATE_LIMIT
 from app.core.database import get_db
-from app.core.limiter import limiter
+from app.core.limiter import client_ip, hit_login_email, limiter
 from app.middleware.role_checker import get_current_user
 from app.models.user import User
 from app.schemas.schemas import ErrorResponse
@@ -45,7 +45,7 @@ router = APIRouter()
         **r.RATE_LIMITED,
     },
 )
-@limiter.limit(AUTH_RATE_LIMIT)
+@limiter.limit(AUTH_RATE_LIMIT, key_func=client_ip)
 def register(request: Request, user: UserCreate, db: Session = Depends(get_db)):
     return auth_service.create_user(db=db, user=user)
 
@@ -77,9 +77,29 @@ def register(request: Request, user: UserCreate, db: Session = Depends(get_db)):
         **r.RATE_LIMITED,
     },
 )
-@limiter.limit(AUTH_RATE_LIMIT)
+@limiter.limit(AUTH_RATE_LIMIT, key_func=client_ip)
 def login(request: Request, user: UserLogin, db: Session = Depends(get_db)):
+    if not hit_login_email(user.email):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many login attempts for this account. Try again later.",
+        )
     return auth_service.login(db=db, credentials=user)
+
+
+@router.post(
+    "/logout",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Sign out everywhere",
+    description=(
+        "Revokes **every** token issued to this account so far — on this device "
+        "and any other. The token used for this request stops working too; log "
+        "in again to get a new one."
+    ),
+    responses={**r.AUTHENTICATED},
+)
+def logout(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    auth_service.revoke_tokens(db, current_user)
 
 
 @router.get(

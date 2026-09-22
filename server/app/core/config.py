@@ -1,9 +1,17 @@
 import os
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 from dotenv import load_dotenv
 
 load_dotenv()
+
+
+def _bool_env(name: str, default: bool) -> bool:
+    """Read a boolean from the environment (1/true/yes/on), falling back to `default`."""
+    raw = os.getenv(name)
+    if raw is None or not raw.strip():
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _int_env(name: str, default: int) -> int:
@@ -72,10 +80,56 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 30
 
 # Qdrant Configuration
+# QDRANT_URL wins when set (e.g. a managed cluster's https:// endpoint);
+# otherwise it is assembled from scheme, host and port.
 QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
 QDRANT_PORT = _int_env("QDRANT_PORT", 6333)
-QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
-QDRANT_URL = f"http://{QDRANT_HOST}:{QDRANT_PORT}"
+QDRANT_SCHEME = os.getenv("QDRANT_SCHEME", "http").strip().lower()
+QDRANT_URL = os.getenv("QDRANT_URL") or f"{QDRANT_SCHEME}://{QDRANT_HOST}:{QDRANT_PORT}"
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY") or None
+# Optional key restricted to reads; used by the analysis path so a request that
+# only retrieves can never write. Falls back to QDRANT_API_KEY when unset.
+QDRANT_READ_ONLY_API_KEY = os.getenv("QDRANT_READ_ONLY_API_KEY") or None
+
+_LOOPBACK_HOSTS = {"localhost", "127.0.0.1", "::1"}
+
+
+def _check_qdrant_transport(url: str, api_key: str | None) -> None:
+    """Refuse to start when Qdrant is off-host without auth or over plain HTTP.
+
+    Qdrant holds every reference repository. On loopback (local dev, Compose
+    ports bound to 127.0.0.1) anything goes; anywhere else it needs an API key,
+    and that key must not travel in cleartext.
+    """
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").lower()
+    if host in _LOOPBACK_HOSTS:
+        return
+    if not api_key:
+        raise RuntimeError(
+            f"QDRANT_API_KEY is required when Qdrant is not on localhost (host: {host!r})."
+        )
+    if parsed.scheme != "https":
+        raise RuntimeError(
+            f"Qdrant at {host!r} must use https:// (set QDRANT_URL or QDRANT_SCHEME=https) "
+            "so the API key is not sent in cleartext."
+        )
+
+
+_check_qdrant_transport(QDRANT_URL, QDRANT_API_KEY)
+
+# Interactive API docs (/docs, /redoc, and the OpenAPI schema). On by default
+# for development; set ENABLE_API_DOCS=false on a publicly reachable API.
+ENABLE_API_DOCS = _bool_env("ENABLE_API_DOCS", True)
+
+# Hosts an admin may register reference repositories from. Anything else is
+# rejected, which keeps `git ls-remote`/`git clone` from reaching internal
+# hosts. Set to "*" to allow any public https host.
+REPO_ALLOWED_HOSTS = {
+    h.strip().lower()
+    for h in os.getenv("REPO_ALLOWED_HOSTS", "github.com,gitlab.com,bitbucket.org,codeberg.org").split(",")
+    if h.strip()
+}
 
 # Admin seeding (scripts/seed_admin.py only — never read by the request path)
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
@@ -136,6 +190,8 @@ MAX_CANDIDATE_FILES = _int_env("MAX_CANDIDATE_FILES", 12)
 
 # Rate limits (slowapi syntax)
 AUTH_RATE_LIMIT = os.getenv("AUTH_RATE_LIMIT", "10/minute")
+# Per-account cap on login attempts, whatever IP they come from.
+LOGIN_EMAIL_RATE_LIMIT = os.getenv("LOGIN_EMAIL_RATE_LIMIT", "20/hour")
 ANALYZE_RATE_LIMIT = os.getenv("ANALYZE_RATE_LIMIT", "10/hour")
 UPLOAD_RATE_LIMIT = os.getenv("UPLOAD_RATE_LIMIT", "20/hour")
 

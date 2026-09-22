@@ -25,7 +25,7 @@ export async function SiteHeader({ className }: { className?: string }) {
         </nav>
         <div className="flex items-center gap-2">
           {signedIn ? (
-            <Button asChild size="sm" className="bg-emerald-600 hover:bg-emerald-700">
+            <Button asChild size="sm">
               <Link href="/dashboard">
                 Open dashboard
                 <ArrowRight />
@@ -36,7 +36,7 @@ export async function SiteHeader({ className }: { className?: string }) {
               <Button asChild variant="ghost" size="sm">
                 <Link href="/login">Sign in</Link>
               </Button>
-              <Button asChild size="sm" className="bg-emerald-600 hover:bg-emerald-700">
+              <Button asChild size="sm">
                 <Link href="/register">
                   Get started
                   <ArrowRight />

@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { cookies } from "next/headers"
-import { SESSION_COOKIE, backendUrl, isSameOrigin } from "@/lib/server/session"
+import { SESSION_COOKIE, backendUrl, clientIp, isSameOrigin } from "@/lib/server/session"
 
 // Backend-for-frontend proxy: /api/backend/<path> -> BACKEND_URL/<path>.
 //
@@ -39,6 +39,10 @@ async function proxy(request: NextRequest, ctx: Ctx) {
     const value = request.headers.get(name)
     if (value) headers.set(name, value)
   }
+
+  // Set, not appended: the API trusts this header only from this server.
+  const ip = clientIp(request)
+  if (ip) headers.set("x-forwarded-for", ip)
 
   const cookieStore = await cookies()
   const token = cookieStore.get(SESSION_COOKIE)?.value

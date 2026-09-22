@@ -53,6 +53,8 @@ services:
       # An empty value here would break auth, so it is opt-in rather than
       # a `${QDRANT_API_KEY:-}` substitution.
       # QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY}
+      # Optional read-only key for the analysis path (set QDRANT_READ_ONLY_API_KEY):
+      # QDRANT__SERVICE__READ_ONLY_API_KEY: ${QDRANT_READ_ONLY_API_KEY}
     volumes:
       - qdrant_storage:/qdrant/storage:z
     healthcheck:

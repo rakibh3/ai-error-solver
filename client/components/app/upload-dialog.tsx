@@ -314,11 +314,11 @@ export function UploadDialog(props: {
             className={cn(
               "flex w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-8 text-center transition-colors",
               "hover:border-emerald-400 hover:bg-emerald-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:hover:bg-emerald-950/30",
-              selection && !validationError && "border-emerald-300 bg-emerald-50/40 dark:bg-emerald-950/20",
+              selection && !validationError && "border-emerald-500/50 bg-emerald-50/40 dark:bg-emerald-950/20",
               validationError && "border-destructive/50",
             )}
           >
-            <UploadCloud className="size-8 text-emerald-600" />
+            <UploadCloud className="size-8 text-emerald-400" />
             {selection ? <SelectionSummary selection={selection} /> : (
               <>
                 <span className="text-sm font-medium">
@@ -370,7 +370,6 @@ export function UploadDialog(props: {
             </Button>
             <Button
               type="submit"
-              className="bg-emerald-600 hover:bg-emerald-700"
               disabled={busy || !selection || Boolean(validationError) || !displayName.trim()}
             >
               {busy ? <Loader2 className="animate-spin" /> : <UploadCloud />}

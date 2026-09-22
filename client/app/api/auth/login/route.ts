@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import {
   SESSION_COOKIE,
   backendUrl,
+  clientIp,
   isSameOrigin,
   sessionCookieOptions,
 } from "@/lib/server/session"
@@ -15,6 +16,8 @@ export async function POST(request: Request) {
 
   const body = await request.text()
   const headers: Record<string, string> = { "Content-Type": "application/json" }
+  const ip = clientIp(request)
+  if (ip) headers["X-Forwarded-For"] = ip
 
   let upstream: Response
   try {

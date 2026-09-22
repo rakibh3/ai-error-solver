@@ -125,7 +125,7 @@ export default function HealthPage() {
         </Alert>
       ) : healthy ? (
         <Alert className="border-emerald-200 bg-emerald-50/60 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
-          <CheckCircle2 className="size-4 text-emerald-600" />
+          <CheckCircle2 className="size-4 text-emerald-400" />
           <AlertTitle>Everything lines up</AlertTitle>
           <AlertDescription>Every ready branch has a collection, and there are no orphaned collections.</AlertDescription>
         </Alert>

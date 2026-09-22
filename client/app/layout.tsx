@@ -1,16 +1,29 @@
 import type { Metadata } from 'next';
-import { GeistSans } from 'geist/font/sans';
-import { GeistMono } from 'geist/font/mono';
+import { JetBrains_Mono, Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
+import { APP_NAME } from '@/components/brand';
 import { Toaster } from '@/components/ui/sonner';
+
+const sans = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-jakarta',
+});
+
+const mono = JetBrains_Mono({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-jetbrains',
+});
 
 export const metadata: Metadata = {
   title: {
-    default: 'AI Error Solver',
-    template: '%s · AI Error Solver',
+    default: `${APP_NAME} — get the exact line to change`,
+    template: `%s · ${APP_NAME}`,
   },
   description:
     'Compare your code against a curated reference solution and get the exact file, line, and fix for your error.',
+  applicationName: APP_NAME,
   generator: 'Rakib',
 };
 
@@ -20,19 +33,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <head>
-        <style>{`
-html {
-  font-family: ${GeistSans.style.fontFamily};
-  --font-sans: ${GeistSans.variable};
-  --font-mono: ${GeistMono.variable};
-}
-        `}</style>
-      </head>
-      <body>
+    <html lang="en" className={`dark ${sans.variable} ${mono.variable}`}>
+      <body className="font-sans antialiased">
         {children}
-        <Toaster />
+        <Toaster theme="dark" />
       </body>
     </html>
   );

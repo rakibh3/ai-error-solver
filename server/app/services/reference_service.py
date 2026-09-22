@@ -7,6 +7,7 @@ returns 202; the clone+index runs in the background, and each branch carries its
 own status so one bad branch does not sink the others.
 """
 import logging
+import re
 import shutil
 import subprocess
 from datetime import datetime, timezone
@@ -26,6 +27,13 @@ from app.utils.qdrant import build_collection_name, get_qdrant_client, sanitize_
 logger = logging.getLogger(__name__)
 
 GIT_TIMEOUT_SECONDS = 300
+
+_URL_USERINFO = re.compile(r"(?i)\b([a-z][a-z0-9+.-]*://)[^/\s@]+@")
+
+
+def redact_credentials(text: str) -> str:
+    """Mask `user:token@` in any URL inside `text` (git echoes the remote URL)."""
+    return _URL_USERINFO.sub(r"\1***@", text)
 
 
 def _project_root(project_name: str) -> Path:
@@ -53,7 +61,7 @@ def list_remote_branches(repo_url: str) -> List[str]:
         raise HTTPException(status_code=504, detail="Timed out contacting the repository")
     except subprocess.CalledProcessError as e:
         raise HTTPException(
-            status_code=400, detail=f"Could not read repository: {e.stderr.strip()}"
+            status_code=400, detail=f"Could not read repository: {redact_credentials(e.stderr.strip())}"
         )
 
     branches = [
@@ -175,18 +183,18 @@ def _ingest_single_branch(
             branch.error = None
         else:
             branch.status = BranchStatus.FAILED
-            branch.error = str(result.get("error", "Unknown indexing error"))[:2000]
+            branch.error = redact_credentials(str(result.get("error", "Unknown indexing error")))[:2000]
 
     except subprocess.TimeoutExpired:
         branch.status = BranchStatus.FAILED
         branch.error = "Timed out cloning the branch"
     except subprocess.CalledProcessError as e:
         branch.status = BranchStatus.FAILED
-        branch.error = f"Clone failed: {(e.stderr or '').strip()[:2000]}"
+        branch.error = f"Clone failed: {redact_credentials((e.stderr or '').strip())[:2000]}"
     except Exception as e:  # one branch failing must not sink the rest
         logger.exception("Indexing failed for %s/%s", project.name, branch.branch_name)
         branch.status = BranchStatus.FAILED
-        branch.error = str(e)[:2000]
+        branch.error = redact_credentials(str(e))[:2000]
 
     db.commit()
 

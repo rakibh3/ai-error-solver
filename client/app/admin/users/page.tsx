@@ -139,7 +139,7 @@ export default function UsersPage() {
                   <TableCell className="hidden font-mono text-xs text-muted-foreground sm:table-cell">#{u.id}</TableCell>
                   <TableCell className="hidden md:table-cell">
                     {u.is_active ? (
-                      <Badge variant="outline" className="border-emerald-200 text-emerald-800">Active</Badge>
+                      <Badge variant="outline" className="border-emerald-200 text-emerald-800 dark:border-emerald-900 dark:text-emerald-300">Active</Badge>
                     ) : (
                       <Badge variant="outline" className="text-muted-foreground">Deactivated</Badge>
                     )}

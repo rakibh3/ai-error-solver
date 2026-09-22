@@ -38,7 +38,15 @@ _FENCE_RE = re.compile(r"^\s*```(?:json)?\s*|\s*```\s*$", re.MULTILINE)
 
 
 class AnalyzerError(Exception):
-    """Raised when analysis cannot complete. The message is stored on the row."""
+    """Raised when analysis cannot complete. The message is stored on the row.
+
+    That row is returned to the end user, so the message must be generic: raw
+    exception text from Qdrant, Voyage or OpenRouter can carry hostnames,
+    ports, file paths and upstream payloads. Log the detail, raise the summary.
+    """
+
+
+_SERVICE_UNAVAILABLE = "The analysis service is temporarily unavailable. Please try again later."
 
 
 @lru_cache(maxsize=1)
@@ -48,10 +56,9 @@ def _client() -> OpenAI:
     Built lazily rather than at import so a missing key surfaces as a failed
     analysis row instead of preventing the app from starting.
     """
-    if not config.OPENROUTER_API_KEY:
-        raise AnalyzerError("OPENROUTER_API_KEY is not set")
-    if not config.ANALYSIS_MODEL:
-        raise AnalyzerError("ANALYSIS_MODEL is not set")
+    if not config.OPENROUTER_API_KEY or not config.ANALYSIS_MODEL:
+        logger.error("OPENROUTER_API_KEY or ANALYSIS_MODEL is not set")
+        raise AnalyzerError(_SERVICE_UNAVAILABLE)
     return OpenAI(
         base_url=config.OPENROUTER_BASE_URL,
         api_key=config.OPENROUTER_API_KEY,
@@ -105,12 +112,14 @@ def parse_model_output(raw: str) -> AnalysisResult:
     try:
         payload = json.loads(cleaned)
     except json.JSONDecodeError as e:
-        raise AnalyzerError(f"Model response was not valid JSON: {e}")
+        logger.warning("Model response was not valid JSON: %s", e)
+        raise AnalyzerError("Model response was not valid JSON")
 
     try:
         return AnalysisResult.model_validate(payload)
     except ValidationError as e:
-        raise AnalyzerError(f"Model response did not match the expected schema: {e}")
+        logger.warning("Model response did not match the expected schema: %s", e)
+        raise AnalyzerError("Model response did not match the expected schema")
 
 
 # Bidi overrides/isolates and zero-width characters: invisible in most editors,
@@ -216,10 +225,12 @@ def analyze_code(
     except AnalyzerError:
         raise
     except Exception as e:
-        raise AnalyzerError(f"Failed to connect to Qdrant: {e}")
+        logger.error("Failed to connect to Qdrant: %s", e)
+        raise AnalyzerError(_SERVICE_UNAVAILABLE)
 
     if not config.EMBEDDING_MODEL:
-        raise AnalyzerError("EMBEDDING_MODEL is not set")
+        logger.error("EMBEDDING_MODEL is not set")
+        raise AnalyzerError(_SERVICE_UNAVAILABLE)
 
     embeddings = VoyageAIEmbeddings(
         model=config.EMBEDDING_MODEL, voyage_api_key=config.VOYAGE_API_KEY
@@ -230,12 +241,14 @@ def analyze_code(
             embedding=embeddings,
             collection_name=collection_name,
             url=config.QDRANT_URL,
-            api_key=config.QDRANT_API_KEY,
+            # Retrieval only reads, so prefer the read-only key when configured.
+            api_key=config.QDRANT_READ_ONLY_API_KEY or config.QDRANT_API_KEY,
         )
         query = build_retrieval_query(error_message, extract_paths(error_message))
         relevant_docs = vector_store.similarity_search(query, k=config.RETRIEVAL_K)
     except Exception as e:
-        raise AnalyzerError(f"Retrieval failed: {e}")
+        logger.error("Retrieval failed for %s: %s", collection_name, e)
+        raise AnalyzerError(_SERVICE_UNAVAILABLE)
 
     if not relevant_docs:
         raise AnalyzerError("No reference material matched this error")
@@ -257,13 +270,15 @@ def analyze_code(
             extra_headers=_attribution_headers() or None,
         )
     except OpenAIError as e:
-        raise AnalyzerError(f"Model call failed: {e}")
+        logger.error("Model call failed: %s", e)
+        raise AnalyzerError(_SERVICE_UNAVAILABLE)
 
     # OpenRouter returns 200 with an empty `choices` list when the upstream
     # provider fails mid-request; the reason is on a non-standard `error` key.
     if not completion.choices:
         detail = getattr(completion, "error", None) or "no choices returned"
-        raise AnalyzerError(f"Model call failed: {detail}")
+        logger.error("Model call failed: %s", detail)
+        raise AnalyzerError(_SERVICE_UNAVAILABLE)
 
     raw = completion.choices[0].message.content
     result = parse_model_output(raw)

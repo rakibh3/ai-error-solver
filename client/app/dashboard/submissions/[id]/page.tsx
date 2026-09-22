@@ -169,7 +169,7 @@ function SubmissionView({ id }: { id: string }) {
           <Card className={cn(latest.status === "success" && "border-emerald-300 dark:border-emerald-800")}>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <Sparkles className="size-4 text-emerald-600" />
+                <Sparkles className="size-4 text-emerald-400" />
                 Latest result
               </CardTitle>
               <AnalysisMeta analysis={latest} branchLabel={branchLabel(latest.branch_id)} />
@@ -349,7 +349,7 @@ function AnalyzeCard(props: {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <GitCompare className="size-4 text-emerald-600" />
+          <GitCompare className="size-4 text-emerald-400" />
           Compare against a reference
         </CardTitle>
         <CardDescription>
@@ -458,7 +458,7 @@ function AnalyzeCard(props: {
                   ? "Comparing your code with the reference… this can take up to a minute."
                   : "Analyses are rate-limited per account."}
               </p>
-              <Button type="submit" disabled={!canSubmit} className="bg-emerald-600 hover:bg-emerald-700">
+              <Button type="submit" disabled={!canSubmit}>
                 {pending ? <Loader2 className="animate-spin" /> : <Sparkles />}
                 {pending ? "Analyzing…" : "Find the fix"}
               </Button>

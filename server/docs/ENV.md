@@ -20,11 +20,21 @@ fails with a message naming the variable rather than guessing.
 | `OPENROUTER_SITE_URL` | No (unset) | Optional `HTTP-Referer` for your openrouter.ai ranking; omitted when blank. | `rag/analyzer.py` |
 | `OPENROUTER_APP_TITLE` | No (`Error Navigator`) | Optional `X-OpenRouter-Title` for the same listing. | `rag/analyzer.py` |
 | `VOYAGE_API_KEY` | Yes | Authenticates embeddings — still needed, since OpenRouter routes chat, not embeddings. | `rag/analyzer.py`, `services/indexing_service.py` |
+| `QDRANT_URL` | No (built from scheme/host/port) | Full Qdrant endpoint, e.g. a managed cluster's `https://…:6333`. Overrides the three below. | `config.py` |
+| `QDRANT_SCHEME` | No (`http`) | `http` or `https` when `QDRANT_URL` is unset. The app **refuses to start** if Qdrant is not on localhost and this is not `https`. | `config.py` |
 | `QDRANT_HOST` | No (`localhost`) | Vector-store host; combined with the port into `QDRANT_URL`. | `config.py` |
 | `QDRANT_PORT` | No (`6333`) | Qdrant REST port — the one the client speaks. | `config.py`, Compose |
-| `QDRANT_API_KEY` | No (unset) | Sent on every Qdrant call; harmlessly ignored by an unsecured local container. | `utils/qdrant.py` |
+| `QDRANT_API_KEY` | Yes when Qdrant is off-host | Read-write key sent on every Qdrant call; ignored by an unsecured local container. The app **refuses to start** without it when Qdrant is not on localhost. Compose enforces it only if you uncomment `QDRANT__SERVICE__API_KEY`. | `utils/qdrant.py`, `services/indexing_service.py` |
+| `QDRANT_READ_ONLY_API_KEY` | No (unset) | Read-only key used by the analysis path, so retrieval can never write. Falls back to `QDRANT_API_KEY`. | `rag/analyzer.py` |
 | `QDRANT_GRPC_PORT` | No (`6334`) | Published by Compose only; the app does not use gRPC. | `docker-compose.yml` |
 | `QDRANT_LOG_LEVEL` | No (`INFO`) | Log verbosity inside the Qdrant container only. | `docker-compose.yml` |
+
+## Security switches
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `ENABLE_API_DOCS` | `true` | Serves `/docs`, `/redoc` and `/api/v1/openapi.json`. Set `false` on any publicly reachable API: all three then return **404** instead of mapping every endpoint, including the admin surface. |
+| `REPO_ALLOWED_HOSTS` | `github.com,gitlab.com,bitbucket.org,codeberg.org` | Comma-separated hosts an admin may register reference repositories from; anything else is a **422**, so `git` cannot be pointed at internal hosts. `*` allows any https host. URLs with embedded credentials and non-`https` URLs are always rejected. |
 
 ## Admin seeding
 
@@ -54,12 +64,20 @@ only way to create the first admin, since registration always produces a `USER`.
 
 ## Rate limits
 
-slowapi syntax (`count/period`). Keyed by bearer token when present, else by IP,
-so one user behind a NAT cannot exhaust everyone's budget.
+slowapi syntax (`count/period`). Keyed by the **verified** user id when a valid
+token is present, else by client IP, so one user behind a NAT cannot exhaust
+everyone's budget and a fake `Bearer` header cannot open a fresh bucket.
+Register and login are always keyed by IP.
+
+The client IP comes from `X-Forwarded-For`, which the Next.js BFF sets. uvicorn
+only honours it from peers listed in `FORWARDED_ALLOW_IPS`; if that is wrong,
+every browser shares the BFF's single bucket.
 
 | Variable | Default | Purpose | Raise it / lower it |
 |---|---|---|---|
 | `AUTH_RATE_LIMIT` | `10/minute` | Throttles register and login. | Looser invites credential stuffing; tighter frustrates real logins. |
+| `LOGIN_EMAIL_RATE_LIMIT` | `20/hour` | Caps login attempts per account, from any IP. Backstop when client IPs are spoofed or distributed. | Looser allows more guesses per account; tighter lets an attacker lock a victim out for longer. |
+| `FORWARDED_ALLOW_IPS` | `127.0.0.1` | Read by **uvicorn**, not the app: peers trusted to set `X-Forwarded-For`. uvicorn reads it before the app loads `.env`, so set it in the real environment, pass `--forwarded-allow-ips`, or start with `--env-file .env`. Set to the Next.js server's address when it is not on localhost (e.g. its Docker network IP). | Never `*` when the API port is publicly reachable — anyone could then pick their own rate-limit key. |
 | `UPLOAD_RATE_LIMIT` | `20/hour` | Throttles zip uploads. | Looser costs disk and CPU; tighter blocks iterative work. |
 | `ANALYZE_RATE_LIMIT` | `10/hour` | Throttles analysis — the only endpoint that spends money. | Looser raises your OpenRouter and Voyage bill directly; tighter caps spend per user. |
 

@@ -21,13 +21,18 @@ def get_current_user(
     try:
         payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[ALGORITHM])
         email = payload.get("email")
-        if email is None:
+        token_version = payload.get("tv")
+        if email is None or not isinstance(token_version, int):
             raise credentials_exception
     except jwt.PyJWTError:
         raise credentials_exception
 
     user = db.query(User).filter(User.email == email).first()
     if not user:
+        raise credentials_exception
+    # A token minted before the last logout or role change is revoked. Tokens
+    # without `tv` (issued before revocation existed) are rejected too.
+    if token_version != user.token_version:
         raise credentials_exception
     if not user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")

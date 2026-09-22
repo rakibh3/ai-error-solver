@@ -184,3 +184,47 @@ def test_parse_model_output_rejects_garbage(raw):
 
     with pytest.raises(AnalyzerError):
         parse_model_output(raw)
+
+
+def test_infrastructure_errors_are_not_shown_to_the_user(
+    client, user_token, ready_branch, monkeypatch
+):
+    """Upstream exception text (hosts, ports, payloads) stays in the server log."""
+    from app.rag import analyzer
+
+    class FakeQdrant:
+        def get_collections(self):
+            raise ConnectionError("http://qdrant.internal:6333 refused (secret-host)")
+
+    monkeypatch.setattr(analyzer, "get_qdrant_client", lambda: FakeQdrant())
+
+    sid = upload(client, user_token)
+    r = client.post(
+        f"/api/v1/submissions/{sid}/analyze",
+        json={"branch_id": str(ready_branch.id), "error_message": "NameError: retrun"},
+        headers=auth_header(user_token),
+    )
+    assert r.status_code == 200, r.text
+    reason = r.json()["failure_reason"]
+    assert "temporarily unavailable" in reason
+    assert "qdrant.internal" not in reason and "6333" not in reason
+
+
+def test_unexpected_errors_are_not_shown_to_the_user(
+    client, user_token, ready_branch, monkeypatch
+):
+    from app.services import analysis_service
+
+    def boom(**kwargs):
+        raise RuntimeError("/srv/app/secret/path exploded")
+
+    monkeypatch.setattr(analysis_service.analyzer, "analyze_code", boom)
+
+    sid = upload(client, user_token)
+    r = client.post(
+        f"/api/v1/submissions/{sid}/analyze",
+        json={"branch_id": str(ready_branch.id), "error_message": "NameError: retrun"},
+        headers=auth_header(user_token),
+    )
+    assert r.json()["status"] == "failed"
+    assert "/srv/app" not in r.json()["failure_reason"]

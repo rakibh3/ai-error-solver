@@ -31,3 +31,6 @@ class User(Base):
         nullable=False,
     )
     is_active = Column(Boolean, default=True, server_default="true", nullable=False)
+    # Embedded in every JWT as `tv`. Bumping it revokes all tokens issued
+    # before the bump (logout, role change), without a token blocklist.
+    token_version = Column(Integer, default=0, server_default="0", nullable=False)

@@ -5,7 +5,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.security import create_access_token, hash_password, verify_password
+from app.core.security import create_access_token, email_fingerprint, hash_password, verify_password
 from app.models.user import User, UserRole
 from app.schemas.user import (
     UserCreate,
@@ -41,7 +41,7 @@ def create_user(db: Session, user: UserCreate) -> UserResponse:
         db.commit()
         db.refresh(db_user)
 
-        logger.info("User created successfully with email: %s", user.email)
+        logger.info("User created with id %s", db_user.id)
         return UserResponse.model_validate(db_user)
 
     except IntegrityError as e:
@@ -89,7 +89,7 @@ def login(db: Session, credentials: UserLogin) -> UserLoginResponse:
 
     user = authenticate_user(db, email, credentials.password)
     if not user:
-        logger.warning("Failed login attempt for email: %s", email)
+        logger.warning("Failed login attempt (email_hash=%s)", email_fingerprint(email))
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
@@ -101,19 +101,27 @@ def login(db: Session, credentials: UserLogin) -> UserLoginResponse:
             "sub": str(user.id),
             "email": user.email,
             "role": user.role.value,
+            "tv": user.token_version,
         }
         access_token = create_access_token(payload)
-        logger.info("Successful login for user: %s", user.email)
+        logger.info("Successful login for user id %s", user.id)
         return UserLoginResponse(
             user=UserResponse.model_validate(user),
             token=UserToken(access_token=access_token, token_type="bearer"),
         )
     except Exception as e:
-        logger.error("Error during login process for %s: %s", email, e)
+        logger.error("Error during login process for user id %s: %s", user.id, e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error during login",
         )
+
+
+def revoke_tokens(db: Session, user: User) -> None:
+    """Invalidate every token issued to `user` so far (sign out everywhere)."""
+    user.token_version += 1
+    db.commit()
+    logger.info("Tokens revoked for user id %s", user.id)
 
 
 def set_user_role(db: Session, target: User, new_role: UserRole) -> User:
@@ -130,8 +138,11 @@ def set_user_role(db: Session, target: User, new_role: UserRole) -> User:
                 detail="Cannot demote the last remaining active admin",
             )
 
-    target.role = new_role
+    if target.role != new_role:
+        target.role = new_role
+        # Revoke tokens issued under the old role.
+        target.token_version += 1
     db.commit()
     db.refresh(target)
-    logger.info("Role for user %s changed to %s", target.email, new_role.value)
+    logger.info("Role for user id %s changed to %s", target.id, new_role.value)
     return target

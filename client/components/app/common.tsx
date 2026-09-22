@@ -52,7 +52,7 @@ export function EmptyState(props: {
         props.className,
       )}
     >
-      <div className="mb-4 inline-flex size-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-950">
+      <div className="mb-4 inline-flex size-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-400 dark:bg-emerald-950">
         {props.icon}
       </div>
       <h3 className="font-medium">{props.title}</h3>
@@ -195,8 +195,8 @@ export function ConfirmDialog(props: {
             disabled={pending}
             className={cn(
               props.destructive
-                ? "bg-destructive text-white hover:bg-destructive/90"
-                : "bg-emerald-600 text-white hover:bg-emerald-700",
+                ? "bg-destructive/60 text-white hover:bg-destructive/70"
+                : "bg-primary text-primary-foreground hover:bg-primary/90",
             )}
           >
             {pending && <Loader2 className="animate-spin" />}
@@ -232,7 +232,7 @@ export function CopyButton({ value, label = "Copy" }: { value: string; label?: s
           onClick={copy}
           aria-label={label}
         >
-          {copied ? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />}
+          {copied ? <Check className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
         </Button>
       </TooltipTrigger>
       <TooltipContent>{copied ? "Copied" : label}</TooltipContent>

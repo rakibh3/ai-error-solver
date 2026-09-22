@@ -3,77 +3,68 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { useSWRConfig } from "swr"
 import { toast } from "sonner"
-import { AlertCircle, Check, Circle, Loader2 } from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { AlertCircle, Check, Circle, Loader2, X } from "lucide-react"
+import { PasswordInput } from "@/components/auth/password-input"
+import { APP_NAME } from "@/components/brand"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, useFormField } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { ApiError, errorMessage } from "@/lib/api/client"
 import { keys, login, register } from "@/lib/api/endpoints"
-import { LIMITS } from "@/lib/format"
 import { cn } from "@/lib/utils"
+import { PASSWORD_RULES, type RegisterValues, registerSchema } from "@/lib/validation/auth"
 
-// Mirrors UserCreate in server/app/schemas/user.py.
-const PASSWORD_RULES = [
-  { label: `At least ${LIMITS.passwordMin} characters`, test: (p: string) => p.length >= LIMITS.passwordMin },
-  { label: "Contains a letter", test: (p: string) => /[A-Za-z]/.test(p) },
-  { label: "Contains a number", test: (p: string) => /\d/.test(p) },
-]
-
-type Field = "fullname" | "email" | "password" | "confirm"
+const FIELDS = ["fullname", "email", "password", "confirm"] as const
 
 export default function RegisterPage() {
   const router = useRouter()
   const { mutate } = useSWRConfig()
-  const [values, setValues] = React.useState({ fullname: "", email: "", password: "", confirm: "" })
-  const [fieldErrors, setFieldErrors] = React.useState<Partial<Record<Field, string>>>({})
   const [error, setError] = React.useState<string | null>(null)
-  const [pending, setPending] = React.useState(false)
+  const [redirecting, setRedirecting] = React.useState(false)
 
-  const passwordOk = PASSWORD_RULES.every((r) => r.test(values.password))
-  const confirmMismatch = values.confirm.length > 0 && values.confirm !== values.password
-  const canSubmit =
-    values.fullname.trim() && values.email.trim() && passwordOk && values.confirm === values.password
+  const form = useForm<RegisterValues>({
+    resolver: zodResolver(registerSchema),
+    mode: "onTouched",
+    defaultValues: { fullname: "", email: "", password: "", confirm: "" },
+  })
+  const pending = form.formState.isSubmitting || redirecting
+  const password = form.watch("password")
+  const passwordTouched = form.formState.touchedFields.password || form.formState.isSubmitted
 
-  function set(field: Field) {
-    return (e: React.ChangeEvent<HTMLInputElement>) => {
-      setValues((v) => ({ ...v, [field]: e.target.value }))
-      setFieldErrors((fe) => ({ ...fe, [field]: undefined }))
-    }
-  }
+  React.useEffect(() => {
+    form.setFocus("fullname")
+  }, [form])
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!canSubmit) return
+  async function onSubmit(values: RegisterValues) {
     setError(null)
-    setFieldErrors({})
-    setPending(true)
-
-    const payload = {
-      fullname: values.fullname.trim(),
-      email: values.email.trim(),
-      password: values.password,
-    }
+    const payload = { fullname: values.fullname, email: values.email, password: values.password }
 
     try {
       await register(payload)
     } catch (err) {
-      if (err instanceof ApiError && Object.keys(err.fieldErrors).length) {
-        setFieldErrors(err.fieldErrors as Partial<Record<Field, string>>)
+      const fieldErrors = err instanceof ApiError ? Object.entries(err.fieldErrors) : []
+      const known = fieldErrors.filter(([f]) => (FIELDS as readonly string[]).includes(f))
+      if (known.length) {
+        known.forEach(([field, message], i) =>
+          form.setError(field as (typeof FIELDS)[number], { message }, { shouldFocus: i === 0 }),
+        )
       } else {
         setError(errorMessage(err))
       }
-      setPending(false)
       return
     }
 
     // Account exists now; sign straight in so the user lands in the app.
+    setRedirecting(true)
     try {
       const user = await login({ email: payload.email, password: payload.password })
       await mutate(keys.me, user, { revalidate: false })
-      toast.success("Account created", { description: `Welcome, ${user.fullname}.` })
+      toast.success("Account created", { description: `Welcome to ${APP_NAME}, ${user.fullname}.` })
       router.replace("/dashboard")
       router.refresh()
     } catch {
@@ -83,106 +74,85 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight">Create your account</h1>
-        <p className="text-sm text-muted-foreground">
-          Free to join. Upload your code and get targeted fixes in minutes.
-        </p>
+        <h1 className="text-2xl font-bold tracking-tight">Create your account</h1>
+        <p className="text-sm text-muted-foreground">Free to join. Upload your code and get a targeted fix in minutes.</p>
       </div>
 
       {error && (
         <Alert variant="destructive" role="alert">
           <AlertCircle className="size-4" />
+          <AlertTitle>Couldn&apos;t create your account</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
-      <form className="space-y-4" onSubmit={onSubmit}>
-        <FormField id="fullname" label="Full name" error={fieldErrors.fullname}>
-          <Input
-            id="fullname"
-            autoComplete="name"
-            placeholder="Ayesha Rahman"
-            maxLength={100}
-            value={values.fullname}
-            onChange={set("fullname")}
-            aria-invalid={Boolean(fieldErrors.fullname)}
-            required
-            autoFocus
+      <Form {...form}>
+        <form className="space-y-5" onSubmit={form.handleSubmit(onSubmit)} noValidate>
+          <FormField
+            control={form.control}
+            name="fullname"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Full name</FormLabel>
+                <FormControl>
+                  <Input autoComplete="name" placeholder="Ayesha Rahman" maxLength={100} {...field} />
+                </FormControl>
+                <FormMessage role="alert" />
+              </FormItem>
+            )}
           />
-        </FormField>
-
-        <FormField id="email" label="Email" error={fieldErrors.email}>
-          <Input
-            id="email"
-            type="email"
-            autoComplete="email"
-            placeholder="you@example.com"
-            value={values.email}
-            onChange={set("email")}
-            aria-invalid={Boolean(fieldErrors.email)}
-            required
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  <Input type="email" autoComplete="email" inputMode="email" placeholder="you@example.com" {...field} />
+                </FormControl>
+                <FormMessage role="alert" />
+              </FormItem>
+            )}
           />
-        </FormField>
-
-        <FormField id="password" label="Password" error={fieldErrors.password}>
-          <Input
-            id="password"
-            type="password"
-            autoComplete="new-password"
-            maxLength={128}
-            value={values.password}
-            onChange={set("password")}
-            aria-invalid={Boolean(fieldErrors.password)}
-            aria-describedby="password-rules"
-            required
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Password</FormLabel>
+                <FormControl>
+                  <PasswordInput autoComplete="new-password" maxLength={128} {...field} />
+                </FormControl>
+                <FormMessage role="alert" />
+                <PasswordRules password={password} touched={Boolean(passwordTouched)} />
+              </FormItem>
+            )}
           />
-          <ul id="password-rules" className="mt-2 space-y-1 text-xs">
-            {PASSWORD_RULES.map((rule) => {
-              const ok = rule.test(values.password)
-              return (
-                <li
-                  key={rule.label}
-                  className={cn("flex items-center gap-2", ok ? "text-emerald-700" : "text-muted-foreground")}
-                >
-                  {ok ? <Check className="size-3.5" /> : <Circle className="size-3.5" />}
-                  {rule.label}
-                </li>
-              )
-            })}
-          </ul>
-        </FormField>
-
-        <FormField
-          id="confirm"
-          label="Confirm password"
-          error={confirmMismatch ? "Passwords do not match" : undefined}
-        >
-          <Input
-            id="confirm"
-            type="password"
-            autoComplete="new-password"
-            value={values.confirm}
-            onChange={set("confirm")}
-            aria-invalid={confirmMismatch}
-            required
+          <FormField
+            control={form.control}
+            name="confirm"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Confirm password</FormLabel>
+                <FormControl>
+                  <PasswordInput autoComplete="new-password" {...field} />
+                </FormControl>
+                <FormMessage role="alert" />
+              </FormItem>
+            )}
           />
-        </FormField>
-
-        <Button
-          type="submit"
-          className="w-full bg-emerald-600 hover:bg-emerald-700"
-          disabled={pending || !canSubmit}
-        >
-          {pending && <Loader2 className="animate-spin" />}
-          {pending ? "Creating account…" : "Create account"}
-        </Button>
-      </form>
+          <Button type="submit" size="lg" className="w-full font-semibold" disabled={pending}>
+            {pending && <Loader2 className="animate-spin" />}
+            {pending ? "Creating account…" : "Create account"}
+          </Button>
+        </form>
+      </Form>
 
       <p className="text-center text-sm text-muted-foreground">
         Already have an account?{" "}
-        <Link href="/login" className="font-medium text-foreground underline underline-offset-4">
+        <Link href="/login" className="font-medium text-emerald-400 underline-offset-4 hover:underline">
           Sign in
         </Link>
       </p>
@@ -190,16 +160,38 @@ export default function RegisterPage() {
   )
 }
 
-function FormField(props: { id: string; label: string; error?: string; children: React.ReactNode }) {
+
+// Rendered as the field's description so FormControl's aria-describedby
+// already points the password input at these requirements.
+function PasswordRules({ password, touched }: { password: string; touched: boolean }) {
+  const { formDescriptionId } = useFormField()
   return (
-    <div className="space-y-2">
-      <Label htmlFor={props.id}>{props.label}</Label>
-      {props.children}
-      {props.error && (
-        <p className="text-xs font-medium text-destructive" role="alert">
-          {props.error}
-        </p>
-      )}
-    </div>
+    <ul id={formDescriptionId} className="flex flex-wrap gap-x-4 gap-y-1.5 pt-1 text-xs" aria-label="Password requirements">
+      {PASSWORD_RULES.map((rule) => {
+        const ok = rule.test(password)
+        const failed = !ok && touched
+        return (
+          <li
+            key={rule.label}
+            className={cn(
+              "flex items-center gap-1.5 transition-colors",
+              ok ? "text-emerald-400" : failed ? "text-destructive" : "text-muted-foreground",
+            )}
+          >
+            {ok ? (
+              <Check className="size-3.5 shrink-0" aria-hidden="true" />
+            ) : failed ? (
+              <X className="size-3.5 shrink-0" aria-hidden="true" />
+            ) : (
+              <Circle className="size-3.5 shrink-0" aria-hidden="true" />
+            )}
+            <span>
+              {rule.label}
+              <span className="sr-only">{ok ? " — met" : " — not met"}</span>
+            </span>
+          </li>
+        )
+      })}
+    </ul>
   )
 }

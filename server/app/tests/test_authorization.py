@@ -41,7 +41,7 @@ def test_authorization_matrix(
 def test_user_cannot_ingest_a_reference_project(client, user_token):
     r = client.post(
         "/api/v1/admin/reference-projects",
-        json={"repo_url": "https://example.com/repo.git"},
+        json={"repo_url": "https://github.com/example/repo.git"},
         headers=auth_header(user_token),
     )
     assert r.status_code == 403
