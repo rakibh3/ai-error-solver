@@ -1,0 +1,71 @@
+# Local development infrastructure for ai-error-solver-backend.
+#
+# This file runs the two stateful dependencies only -- Postgres and Qdrant.
+# The FastAPI app itself stays on the host (`uv run uvicorn main:app --reload`)
+# and builds its connection URL from these same POSTGRES_* variables, so the
+# container and the app can never drift apart.
+#
+# Credentials are read from .env (gitignored) and have no defaults here: an
+# unset variable fails the command rather than silently booting a database
+# under a guessed password.
+#
+#   docker compose up -d
+#   uv run alembic upgrade head
+#   uv run python scripts/seed_admin.py
+
+services:
+  postgres:
+    image: postgres:17.11-alpine
+    container_name: error-solver-postgres
+    restart: unless-stopped
+    # Bound to loopback: reachable from the host app, not from the LAN.
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
+      # Keeps initdb deterministic across host locales.
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+
+  qdrant:
+    image: qdrant/qdrant:v1.19.1
+    container_name: error-solver-qdrant
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${QDRANT_PORT:-6333}:6333"   # REST -- what qdrant-client uses here
+      - "127.0.0.1:${QDRANT_GRPC_PORT:-6334}:6334"   # gRPC
+    environment:
+      QDRANT__SERVICE__ENABLE_STATIC_CONTENT: "true"   # dashboard at :6333/dashboard
+      QDRANT__LOG_LEVEL: ${QDRANT_LOG_LEVEL:-INFO}
+      # Local dev runs unsecured. To require the key the app already sends,
+      # set QDRANT_API_KEY in .env and uncomment the line below.
+      # An empty value here would break auth, so it is opt-in rather than
+      # a `${QDRANT_API_KEY:-}` substitution.
+      # QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY}
+    volumes:
+      - qdrant_storage:/qdrant/storage:z
+    healthcheck:
+      # The qdrant image ships no curl/wget, so probe the REST port over
+      # bash's /dev/tcp instead of an HTTP client.
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/6333"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  pgdata:
+  qdrant_storage:

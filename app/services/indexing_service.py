@@ -1,12 +1,11 @@
 import os
-import shutil
 import hashlib
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_qdrant import QdrantVectorStore
 from langchain_voyageai import VoyageAIEmbeddings
 from qdrant_client.models import Distance
 from app.core import config
-from app.utils.qdrant import get_qdrant_client, get_collection_name
+from app.utils.qdrant import get_qdrant_client
 
 # Directories and files to ignore during indexing
 IGNORE_DIRS = {
@@ -52,16 +51,19 @@ def _should_ignore_path(path: str, base_path: str) -> bool:
     
     return False
 
-def index_instructor_project(project_name: str, branch_name: str):
-    # Construct the path to the instructor's project directory
-    project_path = os.path.join("instructor_projects", project_name, branch_name)
+def index_reference_branch(project_name: str, branch_name: str, project_path: str,
+                           collection_name: str):
+    """Embed one checked-out branch into `collection_name`.
 
+    The collection name is supplied by the caller and stored on
+    `reference_branches`, rather than being re-derived from the project and
+    branch names.
+    """
     if not os.path.isdir(project_path):
-        return {"error": "Instructor project not found"}
+        return {"error": f"Reference project path not found: {project_path}"}
 
     # Initialize Qdrant client
     client = get_qdrant_client()
-    collection_name = get_collection_name(project_name, branch_name)
     
     # Clean up old collection if it exists
     try:
@@ -151,11 +153,12 @@ def index_instructor_project(project_name: str, branch_name: str):
     
     try:
         # Create Qdrant vector store from unique documents
-        vector_store = QdrantVectorStore.from_documents(
+        QdrantVectorStore.from_documents(
             unique_texts,
             embeddings,
             collection_name=collection_name,
-            url=f"http://{config.QDRANT_HOST}:{config.QDRANT_PORT}",
+            url=config.QDRANT_URL,
+            api_key=config.QDRANT_API_KEY,
             distance=Distance.COSINE
         )
         
@@ -170,39 +173,3 @@ def index_instructor_project(project_name: str, branch_name: str):
     
     except Exception as e:
         return {"error": f"Failed to index project: {str(e)}"}
-
-def index_project_branches(project_name: str):
-    project_dir = os.path.join("instructor_projects", project_name)
-    
-    if not os.path.isdir(project_dir):
-        return {"error": f"Project directory not found: {project_name}"}
-    
-    branches = []
-    for item in os.listdir(project_dir):
-        item_path = os.path.join(project_dir, item)
-        if os.path.isdir(item_path):
-            branches.append(item)
-    
-    if not branches:
-        return {"error": f"No branches found for project: {project_name}"}
-    
-    results = []
-    for branch in branches:
-        result = index_instructor_project(project_name, branch)
-        results.append({
-            "branch": branch,
-            "result": result
-        })
-    
-    # Summary
-    successful = sum(1 for r in results if r["result"].get("status") == "success")
-    failed = len(results) - successful
-    
-    return {
-        "status": "success" if failed == 0 else "partial",
-        "project_name": project_name,
-        "total_branches": len(branches),
-        "successful_indexes": successful,
-        "failed_indexes": failed,
-        "results": results
-    }

@@ -1,71 +1,36 @@
-from typing import Optional, Dict
+import re
+import uuid
+
 from qdrant_client import QdrantClient
+
 from app.core import config
 
 
 def get_qdrant_client() -> QdrantClient:
-    """Initialize and return a Qdrant client"""
-    url = f"http://{config.QDRANT_HOST}:{config.QDRANT_PORT}"
-    return QdrantClient(
-        url=url,
-        api_key=config.QDRANT_API_KEY
-    )
+    """Initialize and return a Qdrant client."""
+    return QdrantClient(url=config.QDRANT_URL, api_key=config.QDRANT_API_KEY)
 
 
-def get_collection_name(project_name: str, branch_name: str) -> str:
-    """Generate a valid collection name for Qdrant"""
-    safe_name = f"instructor_project_{project_name}_{branch_name}"
-    safe_name = "".join(c if c.isalnum() or c == '_' else '_' for c in safe_name)
-    return safe_name.lower()
+def build_collection_name(project_name: str, branch_name: str) -> str:
+    """Build a collection name for a (project, branch) pair.
 
-
-def parse_collection_name(collection_name: str) -> Optional[Dict[str, str]]:
+    A short uuid suffix keeps the name unique even when two different
+    (project, branch) pairs sanitize to the same string — e.g. `feature/a` and
+    `feature-a`. The result is persisted on `reference_branches.collection_name`
+    and never parsed back apart; `parse_collection_name` used to guess the split
+    from underscores and got it wrong for any project name containing one.
     """
-    Parse collection name to extract project and branch information.
-    
-    Handles most common cases with a balanced approach between simplicity and accuracy.
+    slug = re.sub(r"[^a-z0-9]+", "_", f"{project_name}_{branch_name}".lower()).strip("_")
+    return f"reference_{slug}_{uuid.uuid4().hex[:8]}"
+
+
+def sanitize_path_segment(segment: str) -> str:
+    """Make a git ref or repo name safe to use as a single directory name.
+
+    A branch named `../evil` is legal in git and would otherwise traverse out
+    of the project directory when joined onto a path.
     """
-    if not collection_name.startswith("instructor_project_"):
-        return None
-    
-    # Remove the prefix
-    remainder = collection_name[len("instructor_project_"):]
-    
-    # Split by underscore
-    parts = remainder.split('_')
-    
-    if len(parts) < 2:
-        return None
-    
-    # Common single-word branches
-    common_branches = {
-        'main', 'master', 'dev', 'development', 'staging', 'production',
-        'test', 'testing', 'beta', 'alpha', 'rc', 'setup'
-    }
-    
-    # Try last part as branch if it's a common branch name
-    if parts[-1] in common_branches:
-        return {
-            "project_name": '_'.join(parts[:-1]),
-            "branch_name": parts[-1]
-        }
-    
-    # Look for multi-word branch patterns
-    # Check for patterns like feature_*, bugfix_*, hotfix_*, release_*, part_*
-    branch_prefixes = ['feature', 'bugfix', 'hotfix', 'release', 'part']
-    
-    # Try to find where a branch prefix starts (working backwards)
-    for i in range(len(parts) - 1, 0, -1):  # Start from second-to-last and work backwards
-        if parts[i] in branch_prefixes and i < len(parts) - 1:
-            # Found a branch prefix, everything from here is the branch
-            return {
-                "project_name": '_'.join(parts[:i]),
-                "branch_name": '_'.join(parts[i:])
-            }
-    
-    # Default fallback: assume last part is branch, rest is project
-    # This handles most cases including numbers, versions, etc.
-    return {
-        "project_name": '_'.join(parts[:-1]),
-        "branch_name": parts[-1]
-    } 
+    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "_", segment).strip("._-")
+    if not cleaned or cleaned in (".", ".."):
+        raise ValueError(f"Unusable path segment: {segment!r}")
+    return cleaned[:100]

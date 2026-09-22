@@ -1,7 +1,7 @@
 [project]
 name = "backend"
-version = "1.0.0"
-description = "Add your description here"
+version = "2.0.0"
+description = "Self-service AI error navigator: admin-curated reference repositories, user-driven code comparison"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -18,8 +18,22 @@ dependencies = [
     "voyageai>=0.3.4",
     "langchain>=0.3.27",
     "sqlalchemy>=2.0.42",
-    "psycopg2>=2.9.10",
+    "psycopg2-binary>=2.9.10",
     "passlib>=1.7.4",
+    "bcrypt>=4.2.0",
     "pyjwt>=2.10.1",
-    "pydantic>=2.11.7",
+    "pydantic[email]>=2.11.7",
+    "alembic>=1.14.0",
+    "slowapi>=0.1.9",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "httpx>=0.28.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["app/tests"]
+asyncio_mode = "auto"
